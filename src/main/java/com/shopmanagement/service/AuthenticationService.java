@@ -49,5 +49,6 @@ public class AuthenticationService {
         }
 
         return jwtUtil.generateToken(user.getEmail()); // Return JWT token
+        //
     }
 }
