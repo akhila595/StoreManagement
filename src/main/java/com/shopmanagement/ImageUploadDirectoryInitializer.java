@@ -29,5 +29,6 @@ public class ImageUploadDirectoryInitializer {
             throw new RuntimeException("❌ Failed to create upload directory", e);
         }
     }
+    //
 }
 
