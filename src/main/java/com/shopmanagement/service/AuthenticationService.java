@@ -1,5 +1,7 @@
 package com.shopmanagement.service;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,8 +27,7 @@ public class AuthenticationService {
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
-    // ✅ Register new user
-    public String register(String email, String password) {
+    public String register(String email, String password, String name, String role) {
         if (userRepository.findByEmail(email).isPresent()) {
             throw new IllegalArgumentException("Email already registered");
         }
@@ -34,13 +35,17 @@ public class AuthenticationService {
         User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password)); // Hash password
+        user.setName(name);
+        user.setRole(role);
+
         userRepository.save(user);
 
         return "User registered successfully!";
     }
 
+
     // ✅ Authenticate user and generate JWT
-    public String authenticate(String email, String password) {
+    public Map<String, String> authenticate(String email, String password) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
@@ -48,7 +53,12 @@ public class AuthenticationService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        return jwtUtil.generateToken(user.getEmail()); // Return JWT token
-        //
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        return Map.of(
+            "token", token,
+            "name", user.getName(),
+            "role", user.getRole()
+        );
     }
 }

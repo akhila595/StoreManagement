@@ -10,6 +10,8 @@ import com.shopmanagement.dto.RegisterRequestDTO;
 import com.shopmanagement.service.AuthenticationService;
 import com.shopmanagement.service.PasswordResetService;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 public class LoginController {
@@ -25,39 +27,49 @@ public class LoginController {
 
     // ✅ Register new user
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequestDTO request) {
+    public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO request) {
         try {
-            String response = authenticationService.register(request.getEmail(), request.getPassword());
-            return ResponseEntity.ok(response);
+            String response = authenticationService.register(
+                request.getEmail(),
+                request.getPassword(),
+                request.getName(),
+                request.getRole()
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", response));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registration failed");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Registration failed"));
         }
     }
 
     // ✅ Login
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequestDTO loginRequest) {
+    public ResponseEntity<Object> login(@RequestBody LoginRequestDTO loginRequest) {
         try {
-            String token = authenticationService.authenticate(
+            Map<String, String> response = authenticationService.authenticate(
                 loginRequest.getEmail(),
                 loginRequest.getPassword()
             );
-            return ResponseEntity.ok(token);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
         }
     }
 
+
     // ✅ Forgot Password
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
+    public ResponseEntity<Object> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
         try {
             passwordResetService.sendPasswordResetLink(request.getEmail());
-            return ResponseEntity.ok("Password reset link sent to your email");
+            return ResponseEntity.ok(Map.of("message", "Password reset link sent to your email"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         }
     }
 }
