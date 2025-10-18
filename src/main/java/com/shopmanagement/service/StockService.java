@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -212,49 +213,56 @@ public class StockService {
 	/** STOCK OUT **/
 	public String stockOut(StockOutRequestDTO dto) {
 
-		// 1. Find product variant
-		ProductVariant variant = variantRepo.findByProductSku(dto.getSku())
-				.orElseThrow(() -> new RuntimeException("Product variant not found for SKU: " + dto.getSku()));
+	    // 1. Find product variant
+	    Optional<ProductVariant> variantOpt = variantRepo.findByProductSku(dto.getSku());
 
-		// 2. Check stock availability
-		if (variant.getStockQty() < dto.getQuantity()) {
-			throw new RuntimeException("Insufficient stock for SKU: " + dto.getSku());
-		}
-		variant.setStockQty(variant.getStockQty() - dto.getQuantity());
-		variantRepo.save(variant);
+	    if (variantOpt.isEmpty()) {
+	        return "❌ SKU not found. Please enter a correct SKU.";
+	    }
 
-		// 3. Get latest purchase batch (for threshold price)
-		Purchase lastPurchase = purchaseRepo.findTopByProductVariantOrderByPurchaseDateDesc(variant)
-				.orElseThrow(() -> new RuntimeException("No purchase record found for SKU: " + dto.getSku()));
+	    ProductVariant variant = variantOpt.get();
 
-		// 4. Create SaleInvoice (minimal fields only)
-		SaleInvoice invoice = new SaleInvoice();
-		invoice.setInvoiceId("INV-" + System.currentTimeMillis()); // simple unique ID
-		invoice.setSaleDate(dto.getSaleDate().toLocalDate());
-		invoice.setTotalAmount(dto.getFinalPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
-		// skipping customerName, paymentMode, discountTotal for now
-		invoice = saleInvoiceRepo.save(invoice);
+	    // 2. Check stock availability
+	    if (variant.getStockQty() < dto.getQuantity()) {
+	        return "❌ Insufficient stock for SKU: " + dto.getSku();
+	    }
 
-		// 5. Save SaleItem
-		SaleItem saleItem = new SaleItem();
-		saleItem.setSaleInvoice(invoice);
-		saleItem.setProductVariant(variant);
-		saleItem.setQuantity(dto.getQuantity());
-		saleItem.setSellingPrice(dto.getSellingPrice());
-		saleItem.setFinalPrice(dto.getFinalPrice());
-		saleItem.setThresholdPriceAtSale(lastPurchase.getThresholdPrice());
-		saleItemRepo.save(saleItem);
+	    variant.setStockQty(variant.getStockQty() - dto.getQuantity());
+	    variantRepo.save(variant);
 
-		// 6. Stock Movement
-		StockMovement movement = new StockMovement();
-		movement.setProductVariant(variant);
-		movement.setQuantity(dto.getQuantity());
-		movement.setMovementType("OUT");
-		movement.setMovementDate(dto.getSaleDate());
-		movement.setRemarks(dto.getRemarks());
-		movementRepo.save(movement);
+	    // 3. Get latest purchase batch (for threshold price)
+	    Optional<Purchase> lastPurchaseOpt = purchaseRepo.findTopByProductVariantOrderByPurchaseDateDesc(variant);
+	    if (lastPurchaseOpt.isEmpty()) {
+	        return "❌ No purchase record found for SKU: " + dto.getSku();
+	    }
+	    Purchase lastPurchase = lastPurchaseOpt.get();
 
-		return "✅ Stock OUT successful for SKU: " + dto.getSku() + ", Invoice: " + invoice.getInvoiceId();
+	    // 4. Create SaleInvoice (minimal fields only)
+	    SaleInvoice invoice = new SaleInvoice();
+	    invoice.setInvoiceId("INV-" + System.currentTimeMillis()); // simple unique ID
+	    invoice.setSaleDate(dto.getSaleDate().toLocalDate());
+	    invoice.setTotalAmount(dto.getFinalPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
+	    invoice = saleInvoiceRepo.save(invoice);
+
+	    // 5. Save SaleItem
+	    SaleItem saleItem = new SaleItem();
+	    saleItem.setSaleInvoice(invoice);
+	    saleItem.setProductVariant(variant);
+	    saleItem.setQuantity(dto.getQuantity());
+	    saleItem.setSellingPrice(dto.getSellingPrice());
+	    saleItem.setFinalPrice(dto.getFinalPrice());
+	    saleItem.setThresholdPriceAtSale(lastPurchase.getThresholdPrice());
+	    saleItemRepo.save(saleItem);
+
+	    // 6. Stock Movement
+	    StockMovement movement = new StockMovement();
+	    movement.setProductVariant(variant);
+	    movement.setQuantity(dto.getQuantity());
+	    movement.setMovementType("OUT");
+	    movement.setMovementDate(dto.getSaleDate());
+	    movement.setRemarks(dto.getRemarks());
+	    movementRepo.save(movement);
+
+	    return "✅ Stock OUT successful for SKU: " + dto.getSku() + ", Invoice: " + invoice.getInvoiceId();
 	}
-
 }
