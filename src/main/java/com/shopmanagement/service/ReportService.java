@@ -220,4 +220,22 @@ public class ReportService {
         return report;
     }
 
+    public List<PurchaseReportDTO> getAllSuppliersPurchaseReport(LocalDate startDate, LocalDate endDate) {
+        List<Purchase> purchases = purchaseRepo.findByPurchaseDateBetween(startDate, endDate);
+
+        List<PurchaseReportDTO> reportList = new ArrayList<>();
+        for (Purchase p : purchases) {
+            PurchaseReportDTO dto = new PurchaseReportDTO();
+            dto.setSupplierName(p.getSupplier().getSupplierName());
+            dto.setPurchaseDate(p.getPurchaseDate());
+            dto.setProductName(p.getProductVariant().getProduct().getProductName());
+            dto.setQuantity(p.getQuantity());
+            dto.setThresholdPrice(p.getThresholdPrice());
+
+            reportList.add(dto);
+        }
+
+        return reportList;
+    }
+
 }

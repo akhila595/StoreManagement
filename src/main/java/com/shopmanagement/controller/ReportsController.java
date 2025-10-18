@@ -77,4 +77,13 @@ public class ReportsController {
     public DetailedDailyReportDTO getYearlyReport(@RequestParam("year") int year) {
         return reportService.getYearlyReport(year);
     }
+    
+ // 8. All Suppliers Purchase Report
+    @GetMapping("/suppliers")
+    public List<PurchaseReportDTO> getAllSuppliersPurchaseReport(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+    	return reportService.getAllSuppliersPurchaseReport(startDate, endDate);
+    }
+
 }

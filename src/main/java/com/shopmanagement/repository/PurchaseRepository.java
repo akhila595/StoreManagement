@@ -15,5 +15,4 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
     List<Purchase> findByPurchaseDateBetween(LocalDate start, LocalDate end);
     List<Purchase> findBySupplier_SupplierIdAndPurchaseDateBetween(Long supplierId, LocalDate start, LocalDate end);
     Optional<Purchase> findTopByProductVariantOrderByPurchaseDateDesc(ProductVariant productVariant);
-
 }
