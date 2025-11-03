@@ -8,8 +8,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +44,7 @@ import com.shopmanagement.repository.SaleItemRepository;
 import com.shopmanagement.repository.SizeRepository;
 import com.shopmanagement.repository.StockMovementRepository;
 import com.shopmanagement.repository.SupplierRepository;
-
+import com.shopmanagement.dto.RecentStockInDTO;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -265,4 +267,41 @@ public class StockService {
 
 	    return "✅ Stock OUT successful for SKU: " + dto.getSku() + ", Invoice: " + invoice.getInvoiceId();
 	}
+	public List<RecentStockInDTO> getRecentStockIns() {
+	    // ✅ Fetch the 10 most recent purchases
+	    List<Purchase> recentPurchases = purchaseRepo.findTop10ByOrderByPurchaseDateDesc();
+
+	    return recentPurchases.stream().map(p -> {
+	        ProductVariant variant = p.getProductVariant();
+	        Product product = (variant != null) ? variant.getProduct() : null;
+
+	        String productName = (product != null && product.getProductName() != null)
+	                ? product.getProductName()
+	                : "Unknown Product";
+
+	        String sku = (variant != null && variant.getProductSku() != null)
+	                ? variant.getProductSku()
+	                : "N/A";
+
+	        int quantityAdded = (p.getQuantity() != null) ? p.getQuantity() : 0;
+
+	        String supplierName = (p.getSupplier() != null && p.getSupplier().getSupplierName() != null)
+	                ? p.getSupplier().getSupplierName()
+	                : "Unknown Supplier";
+
+	        String imageUrl = (product != null && product.getImageUrl() != null)
+	                ? product.getImageUrl()
+	                : null;
+
+	        return new RecentStockInDTO(
+	                productName,
+	                sku,
+	                quantityAdded,
+	                supplierName,
+	                p.getPurchaseDate(),
+	                imageUrl
+	        );
+	    }).collect(Collectors.toList());
+	}
+
 }

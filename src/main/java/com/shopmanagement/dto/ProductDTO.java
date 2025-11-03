@@ -4,34 +4,47 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Data Transfer Object for Product
+ * Used for sending and receiving product data across API.
+ */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProductDTO {
 
-   
-	private Long id; // Corresponds to productId in the entity
-    private String productName;
-    private String designCode;
-    private String pattern;
-    
-    // Brand fields
-    private Long brandId; 
-    private String brandName; // Optional: Add brand name if needed
-    
-    // ClothType fields
-    private Long clothTypeId; 
-    private String clothTypeName; // Optional: Add cloth type name if needed
-    
-    // Category fields
-    private Long categoryId;
-    private String categoryName; // Optional: Add category name if needed
+    // --- Product fields ---
+    private Long id;              // Product ID
+    private String productName;   // Product name
+    private String designCode;    // Unique design code
+    private String pattern;       // Product pattern
+    private String imageUrl;      // Image URL (optional)
 
-    // Constructor including all fields
-    public ProductDTO(Long id, String productName, String designCode, String pattern, 
-                      Long brandId, String brandName, 
-                      Long clothTypeId, String clothTypeName, 
-                      Long categoryId, String categoryName) {
+    // --- Brand fields ---
+    private Long brandId;         // Related Brand ID
+    private String brandName;     // Read-only Brand name
+
+    // --- ClothType fields ---
+    private Long clothTypeId;     // Related ClothType ID
+    private String clothTypeName; // Read-only ClothType name
+
+    // --- Category fields ---
+    private Long categoryId;      // Related Category ID
+    private String categoryName;  // Read-only Category name
+
+    // --- Constructor used for mapping entity → DTO ---
+    public ProductDTO(
+            Long id,
+            String productName,
+            String designCode,
+            String pattern,
+            Long brandId,
+            String brandName,
+            Long clothTypeId,
+            String clothTypeName,
+            Long categoryId,
+            String categoryName
+    ) {
         this.id = id;
         this.productName = productName;
         this.designCode = designCode;
@@ -43,6 +56,26 @@ public class ProductDTO {
         this.categoryId = categoryId;
         this.categoryName = categoryName;
     }
+    public ProductDTO(
+            String productName,
+            String designCode,
+            String pattern,
+            String imageUrl,
+            Long brandId,
+            Long clothTypeId,
+            Long categoryId
+    ) {
+        this.productName = productName;
+        this.designCode = designCode;
+        this.pattern = pattern;
+        this.imageUrl = imageUrl;
+        this.brandId = brandId;
+        this.clothTypeId = clothTypeId;
+        this.categoryId = categoryId;
+    }
+    
+    public ProductDTO() {}
+    
     public Long getId() {
 		return id;
 	}
@@ -73,6 +106,14 @@ public class ProductDTO {
 
 	public void setPattern(String pattern) {
 		this.pattern = pattern;
+	}
+
+	public String getImageUrl() {
+		return imageUrl;
+	}
+
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
 	}
 
 	public Long getBrandId() {
@@ -123,4 +164,5 @@ public class ProductDTO {
 		this.categoryName = categoryName;
 	}
 
+	
 }
