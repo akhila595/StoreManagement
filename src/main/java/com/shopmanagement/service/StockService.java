@@ -45,6 +45,8 @@ import com.shopmanagement.repository.SizeRepository;
 import com.shopmanagement.repository.StockMovementRepository;
 import com.shopmanagement.repository.SupplierRepository;
 import com.shopmanagement.dto.RecentStockInDTO;
+import com.shopmanagement.dto.RecentStockOutDTO;
+
 import jakarta.transaction.Transactional;
 
 @Service
@@ -78,7 +80,11 @@ public class StockService {
 
 	@Value("${app.upload.image-dir}")
 	private String uploadImageDir;
+	
+	@Autowired
+	private StockMovementRepository stockMovementRepo;
 
+	
 	/** STOCK IN **/
 	@Transactional
 	public String stockIn(StockInRequestDTO dto, MultipartFile imageFile) {
@@ -303,5 +309,40 @@ public class StockService {
 	        );
 	    }).collect(Collectors.toList());
 	}
+	
+	public List<RecentStockOutDTO> getRecentStockOuts() {
+	    // Fetch the 10 most recent stock movements where movementType = "STOCK_OUT"
+	    List<StockMovement> recentStockOuts = stockMovementRepo
+	        .findTop10ByMovementTypeOrderByMovementDateDesc("OUT");
 
+	    return recentStockOuts.stream().map(s -> {
+	        ProductVariant variant = s.getProductVariant();
+	        Product product = (variant != null) ? variant.getProduct() : null;
+
+	        String productName = (product != null && product.getProductName() != null)
+	                ? product.getProductName()
+	                : "Unknown Product";
+
+	        String sku = (variant != null && variant.getProductSku() != null)
+	                ? variant.getProductSku()
+	                : "N/A";
+
+	        int quantityRemoved = (s.getQuantity() != null) ? s.getQuantity() : 0;
+
+	        String reason = (s.getRemarks() != null) ? s.getRemarks() : "N/A";
+
+	        String imageUrl = (product != null && product.getImageUrl() != null)
+	                ? product.getImageUrl()
+	                : null;
+
+	        return new RecentStockOutDTO(
+	                productName,
+	                sku,
+	                quantityRemoved,
+	                reason,
+	                s.getMovementDate(),
+	                imageUrl
+	        );
+	    }).collect(Collectors.toList());
+	}
 }

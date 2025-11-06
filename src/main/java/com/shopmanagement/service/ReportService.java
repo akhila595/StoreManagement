@@ -189,21 +189,24 @@ public class ReportService {
 
 
     public List<LowStockProductDTO> getLowStockProducts() {
-        int lowStockThreshold = 10; // Define a fixed threshold for low stock.
+        int lowStockThreshold = 10; // Threshold for low stock.
         
-        // Fetch all products with stock less than 10
+        // Fetch product variants with low stock
         List<ProductVariant> lowStockVariants = productVariantRepository.findByStockQtyLessThan(lowStockThreshold);
 
-        // Map the results to LowStockProductDTO
-        List<LowStockProductDTO> lowStockProductDTOs = new ArrayList<>();
+        List<LowStockProductDTO> dtoList = new ArrayList<>();
+        
         for (ProductVariant variant : lowStockVariants) {
             LowStockProductDTO dto = new LowStockProductDTO();
             dto.setProductName(variant.getProduct().getProductName());
+            dto.setSku(variant.getProductSku()); // ✅ Set SKU
             dto.setStockQty(variant.getStockQty());
-            lowStockProductDTOs.add(dto);
+            dtoList.add(dto);
         }
-        return lowStockProductDTOs;
+
+        return dtoList;
     }
+
     public DetailedDailyReportDTO getWeeklyReport(LocalDate startDate, LocalDate endDate) {
         List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(startDate, endDate);
         DetailedDailyReportDTO report = calculateReport(sales, null); // No specific "date"

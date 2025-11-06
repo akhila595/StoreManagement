@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.shopmanagement.dto.ProductDTO;
 import com.shopmanagement.dto.RecentStockInDTO;
+import com.shopmanagement.dto.RecentStockOutDTO;
 import com.shopmanagement.dto.StockInRequestDTO;
 import com.shopmanagement.dto.StockOutRequestDTO;
 import com.shopmanagement.service.ReportService;
@@ -50,5 +51,10 @@ public class StockInController {
         List<RecentStockInDTO> recentStockIns = stockService.getRecentStockIns();
         return ResponseEntity.ok(recentStockIns);
     }
-
+    
+    @GetMapping("/recent-stock-outs")
+    public ResponseEntity<List<RecentStockOutDTO>> getRecentStockOuts() {
+        List<RecentStockOutDTO> recentStockOuts = stockService.getRecentStockOuts();
+        return ResponseEntity.ok(recentStockOuts);
+    }
 }
