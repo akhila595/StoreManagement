@@ -100,22 +100,31 @@ public class ReportService {
     public List<TopSellingProductDTO> getTopSellingProducts(LocalDate startDate, LocalDate endDate, int limit) {
         List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(startDate, endDate);
 
-        // Use Product as key so we can access both productName and imageUrl
-        Map<Product, Integer> productQtyMap = new HashMap<>();
+        Map<ProductVariant, Integer> variantQtyMap = new HashMap<>();
+
         for (SaleItem sale : sales) {
-            Product product = sale.getProductVariant().getProduct();
-            productQtyMap.put(product, productQtyMap.getOrDefault(product, 0) + sale.getQuantity());
+            ProductVariant variant = sale.getProductVariant();
+            variantQtyMap.put(variant, variantQtyMap.getOrDefault(variant, 0) + sale.getQuantity());
         }
 
-        // Convert map entries into DTO list with imageUrl
-        return productQtyMap.entrySet().stream()
-                .sorted((a, b) -> b.getValue().compareTo(a.getValue())) // sort by quantity sold
+        return variantQtyMap.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
                 .limit(limit)
-                .map(e -> new TopSellingProductDTO(
-                        e.getKey().getProductName(),
-                        e.getKey().getImageUrl(),  // ✅ fetch image url from product table
-                        e.getValue()
-                ))
+                .map(e -> {
+                    ProductVariant v = e.getKey();
+                    Product p = v.getProduct();
+
+                    return new TopSellingProductDTO(
+                            p.getProductName(),
+                            p.getBrand() != null ? p.getBrand().getBrand() : "-",
+                            p.getPattern() != null ? p.getPattern() : "-",
+                            p.getClothType() != null ? p.getClothType().getClothType() : "-",
+                            v.getColor() != null ? v.getColor().getColor() : "-",
+                            v.getSize() != null ? v.getSize().getSize() : "-",
+                            e.getValue(),
+                            p.getImageUrl()
+                    );
+                })
                 .collect(Collectors.toList());
     }
 
