@@ -13,28 +13,29 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Spring Security configuration for the Shop Management backend.
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Autowired
-    private JwtAuthenticationFilter jwtFilter;  // Your JWT filter
+    private JwtAuthenticationFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         return http
-                .cors()  // Enable CORS support
-                .and()
-                .csrf(csrf -> csrf.disable())  // Disable CSRF for stateless APIs
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // No sessions
+                .cors().and()           // Enable CORS
+                .csrf().disable()       // Disable CSRF for stateless backend
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()  // Public auth endpoints
-                        .anyRequest().authenticated()  // All others secured
+                        .requestMatchers("/api/auth/**").permitAll() // Public endpoints
+                        .anyRequest().authenticated()               // Everything else secured
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)  // JWT filter before username/password filter
+
+                // Add JWT filter BEFORE UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .build();
     }
 

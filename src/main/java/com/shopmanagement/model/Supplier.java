@@ -19,7 +19,8 @@ public class Supplier {
     private String phoneNumber;
     private String whatsApp;
     private String email;
-
+   
+    
     @Column(columnDefinition = "TEXT")
     private String address;
 

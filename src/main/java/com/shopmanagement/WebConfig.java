@@ -15,23 +15,22 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.upload.image-dir}")
     private String uploadDir;
 
-    // ✅ CORS Configuration
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+
         registry.addMapping("/**")
                 .allowedOrigins("http://localhost:5173")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
+                .allowedHeaders("Authorization", "Content-Type")
+                .exposedHeaders("Authorization")
                 .allowCredentials(true);
     }
 
-    // ✅ Static Resource Mapping for Uploaded Images
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         Path uploadPath = Paths.get(uploadDir);
-        String absolutePath = uploadPath.toFile().getAbsolutePath();
 
         registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:" + absolutePath + "/");
+                .addResourceLocations("file:" + uploadPath.toFile().getAbsolutePath() + "/");
     }
 }

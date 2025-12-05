@@ -27,13 +27,13 @@ public class SupplierController {
     }
 
     @PutMapping("/{id}")
-    public Supplier updateSupplier(@PathVariable Long id, @RequestBody SupplierDTO dto) {
+    public Supplier updateSupplier(@PathVariable("id") Long id, @RequestBody SupplierDTO dto) {
         dto.setSupplierId(id);
         return supplierService.saveOrUpdate(dto);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteSupplier(@PathVariable Long id) {
+    public void deleteSupplier(@PathVariable("id") Long id) {
         supplierService.deleteSupplier(id);
     }
 }

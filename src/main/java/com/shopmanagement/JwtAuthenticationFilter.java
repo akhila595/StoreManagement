@@ -1,25 +1,23 @@
 package com.shopmanagement;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.shopmanagement.service.CustomUserDetailsService;
 import com.shopmanagement.service.JwtUtil;
 
-import java.io.IOException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Filter that validates JWT token on every request (except public endpoints).
- */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -27,47 +25,68 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private UserDetailsService userDetailsService;  // Your CustomUserDetailsService
+    private CustomUserDetailsService userDetailsService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
-        String jwtToken = null;
+        String path = request.getRequestURI();
+
+        // 🔓 Allow public endpoints without JWT
+        if (isPublic(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        String jwt = null;
         String email = null;
 
-        // Extract JWT token from Authorization header if present and starts with "Bearer "
+        // 🔍 Extract token from header
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            jwtToken = authHeader.substring(7);  // Remove "Bearer " prefix
-
+            jwt = authHeader.substring(7);
             try {
-                email = jwtUtil.extractEmail(jwtToken);
+                email = jwtUtil.extractEmail(jwt);
             } catch (Exception e) {
-                // Invalid token or parse failure, do nothing, security context remains unauthenticated
-                logger.error("JWT token extraction failed: " + e.getMessage());
+                logger.warn("Invalid JWT token: " + e.getMessage());
             }
         }
 
-        // If email extracted and user not yet authenticated in security context
+        // Validate token and authenticate
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            // 🔥 Load user + roles from database
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            // Validate token against user details
-            if (jwtUtil.validateToken(jwtToken, userDetails.getUsername())) {
-                // Create authentication token for Spring Security context
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
+            if (jwtUtil.validateToken(jwt, userDetails.getUsername())) {
 
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // Spring auth object with ROLES
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities() // 🔥 roles included here
+                        );
 
-                // Set the authentication in the SecurityContext
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                // Set user authentication into Spring context
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
-        // Continue filter chain
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPublic(String path) {
+        return path.startsWith("/api/auth/login")
+                || path.startsWith("/api/auth/register")
+                || path.startsWith("/api/auth/forgot-password");
     }
 }
