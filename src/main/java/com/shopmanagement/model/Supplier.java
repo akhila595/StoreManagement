@@ -30,6 +30,18 @@ public class Supplier {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
+
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+    
 	public Long getSupplierId() {
 		return supplierId;
 	}

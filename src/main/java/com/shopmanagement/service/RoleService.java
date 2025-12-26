@@ -2,12 +2,8 @@ package com.shopmanagement.service;
 
 import com.shopmanagement.dto.AssignRolesRequest;
 import com.shopmanagement.dto.RoleDTO;
-import com.shopmanagement.model.Permission;
-import com.shopmanagement.model.Role;
-import com.shopmanagement.model.User;
-import com.shopmanagement.repository.PermissionRepository;
-import com.shopmanagement.repository.RoleRepository;
-import com.shopmanagement.repository.UserRepository;
+import com.shopmanagement.model.*;
+import com.shopmanagement.repository.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,106 +16,202 @@ public class RoleService {
     private final RoleRepository roleRepo;
     private final PermissionRepository permRepo;
     private final UserRepository userRepo;
+    private final CustomerRepository customerRepo;
+    private final JwtUtils jwtUtils;
 
     public RoleService(RoleRepository roleRepo,
                        PermissionRepository permRepo,
-                       UserRepository userRepo) {
+                       UserRepository userRepo,
+                       CustomerRepository customerRepo,
+                       JwtUtils jwtUtils) {
         this.roleRepo = roleRepo;
         this.permRepo = permRepo;
         this.userRepo = userRepo;
+        this.customerRepo = customerRepo;
+        this.jwtUtils = jwtUtils;
     }
 
-    // =========================
-    // ROLE CRUD
-    // =========================
+    // ==========================================================
+    // ROLE CRUD (supports SuperAdmin + Customer Admin)
+    // ==========================================================
     public List<RoleDTO> getAll() {
-        return roleRepo.findAll().stream().map(this::toDTO).toList();
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<Role> roles;
+        if (customerId == null) {
+            // 🟩 SuperAdmin — can view all roles
+            roles = roleRepo.findAll();
+        } else {
+            roles = roleRepo.findByCustomer_Id(customerId);
+        }
+
+        return roles.stream().map(this::toDTO).toList();
     }
 
     public RoleDTO getById(Long id) {
-        return roleRepo.findById(id)
-                .map(this::toDTO)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Role role;
+        if (customerId == null) {
+            // 🟩 SuperAdmin — can access any role
+            role = roleRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+        } else {
+            role = roleRepo.findByIdAndCustomer_Id(id, customerId)
+                    .orElseThrow(() -> new RuntimeException("Role not found or unauthorized access"));
+        }
+
+        return toDTO(role);
     }
 
     @Transactional
     public RoleDTO create(RoleDTO dto) {
-        Role r = new Role();
-        r.setName(dto.getName());
-        r.setDescription(dto.getDescription());
-        r.setPermissions(fetchPermissions(dto.getPermissionIds()));
-        return toDTO(roleRepo.save(r));
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Role role = new Role();
+        role.setName(dto.getName());
+        role.setDescription(dto.getDescription());
+        role.setPermissions(fetchPermissions(dto.getPermissionIds()));
+
+        // ✅ Assign customer if not SuperAdmin
+        if (customerId != null) {
+            Customer customer = customerRepo.findById(customerId)
+                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+            role.setCustomer(customer);
+        } else {
+            role.setCustomer(null); // SuperAdmin global role
+        }
+
+        return toDTO(roleRepo.save(role));
     }
 
     @Transactional
     public RoleDTO update(Long id, RoleDTO dto) {
-        Role r = roleRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
-        r.setName(dto.getName());
-        r.setDescription(dto.getDescription());
-        r.setPermissions(fetchPermissions(dto.getPermissionIds()));
-        return toDTO(roleRepo.save(r));
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Role role;
+        if (customerId == null) {
+            role = roleRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+        } else {
+            role = roleRepo.findByIdAndCustomer_Id(id, customerId)
+                    .orElseThrow(() -> new RuntimeException("Role not found or unauthorized access"));
+        }
+
+        role.setName(dto.getName());
+        role.setDescription(dto.getDescription());
+        role.setPermissions(fetchPermissions(dto.getPermissionIds()));
+
+        return toDTO(roleRepo.save(role));
     }
 
     @Transactional
     public void delete(Long id) {
-        Role role = roleRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+        Long customerId = jwtUtils.getRequiredCustomerId();
 
-        // ✅ Check if any users are assigned to this role
+        Role role;
+        if (customerId == null) {
+            role = roleRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+        } else {
+            role = roleRepo.findByIdAndCustomer_Id(id, customerId)
+                    .orElseThrow(() -> new RuntimeException("Role not found or unauthorized access"));
+        }
+
+        // ✅ Prevent deletion if assigned to users
         List<User> usersWithRole = userRepo.findAll().stream()
                 .filter(u -> u.getRoles().stream().anyMatch(r -> Objects.equals(r.getId(), id)))
                 .toList();
 
         if (!usersWithRole.isEmpty()) {
-            throw new DataIntegrityViolationException(
-                    "Cannot delete: role is assigned to users");
+            throw new DataIntegrityViolationException("Cannot delete: role is assigned to users");
         }
 
         roleRepo.delete(role);
     }
 
-    // =========================
+    // ==========================================================
     // USER → ROLE ASSIGNMENT
-    // =========================
+    // ==========================================================
     @Transactional
     public void assignRoles(AssignRolesRequest req) {
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
         User user = userRepo.findById(req.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Set<Role> roles = new HashSet<>(roleRepo.findAllById(req.getRoleIds()));
+        // 🟩 SuperAdmin can assign roles globally
+        if (customerId != null) {
+            if (user.getCustomer() == null || !Objects.equals(user.getCustomer().getId(), customerId)) {
+                throw new RuntimeException("Unauthorized: cannot assign roles across customers");
+            }
+        }
+
+        Set<Role> roles = new HashSet<>();
+        for (Long roleId : req.getRoleIds()) {
+            Role role;
+            if (customerId == null) {
+                role = roleRepo.findById(roleId)
+                        .orElseThrow(() -> new RuntimeException("Role not found"));
+            } else {
+                role = roleRepo.findByIdAndCustomer_Id(roleId, customerId)
+                        .orElseThrow(() -> new RuntimeException("Role not found or unauthorized"));
+            }
+            roles.add(role);
+        }
+
         user.setRoles(roles);
         userRepo.save(user);
     }
 
-    public List<Role> getRolesForUser(Long id) {
-        User user = userRepo.findById(id)
+    // ==========================================================
+    // USER → GET ROLES
+    // ==========================================================
+    public List<Role> getRolesForUser(Long userId) {
+        User user = userRepo.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return new ArrayList<>(user.getRoles());
     }
 
-    // =========================
+    // ==========================================================
     // ROLE → PERMISSIONS ASSIGNMENT
-    // =========================
+    // ==========================================================
     public List<Permission> getPermissionsForRole(Long roleId) {
-        Role r = roleRepo.findById(roleId)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
-        return new ArrayList<>(r.getPermissions());
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Role role;
+        if (customerId == null) {
+            role = roleRepo.findById(roleId)
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+        } else {
+            role = roleRepo.findByIdAndCustomer_Id(roleId, customerId)
+                    .orElseThrow(() -> new RuntimeException("Role not found or unauthorized access"));
+        }
+
+        return new ArrayList<>(role.getPermissions());
     }
 
     @Transactional
     public void assignPermissionsToRole(Long roleId, List<Long> permissionIds) {
-        Role role = roleRepo.findById(roleId)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Role role;
+        if (customerId == null) {
+            role = roleRepo.findById(roleId)
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+        } else {
+            role = roleRepo.findByIdAndCustomer_Id(roleId, customerId)
+                    .orElseThrow(() -> new RuntimeException("Role not found or unauthorized access"));
+        }
 
         Set<Permission> permissions = new HashSet<>(permRepo.findAllById(permissionIds));
         role.setPermissions(permissions);
         roleRepo.save(role);
     }
 
-    // =========================
+    // ==========================================================
     // HELPERS
-    // =========================
+    // ==========================================================
     private Set<Permission> fetchPermissions(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return new HashSet<>();
         return new HashSet<>(permRepo.findAllById(ids));
@@ -133,6 +225,8 @@ public class RoleService {
         dto.setPermissionIds(
                 r.getPermissions().stream().map(Permission::getId).toList()
         );
+        if (r.getCustomer() != null)
+            dto.setCustomerId(r.getCustomer().getId());
         return dto;
     }
 }

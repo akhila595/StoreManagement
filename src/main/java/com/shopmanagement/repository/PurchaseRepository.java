@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.shopmanagement.dto.PurchaseReportDTO;
 import com.shopmanagement.model.ProductVariant;
 import com.shopmanagement.model.Purchase;
 @Repository
@@ -16,4 +17,9 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
     List<Purchase> findBySupplier_SupplierIdAndPurchaseDateBetween(Long supplierId, LocalDate start, LocalDate end);
     Optional<Purchase> findTopByProductVariantOrderByPurchaseDateDesc(ProductVariant productVariant);
     List<Purchase> findTop10ByOrderByPurchaseDateDesc();
+    List<Purchase> findBySupplier_SupplierIdAndPurchaseDateBetweenAndCustomer_Id(Long supplierId, LocalDate start, LocalDate end, Long customerId);
+    Optional<Purchase> findTopByProductVariantAndCustomer_IdOrderByPurchaseDateDesc(ProductVariant variant, Long customerId);
+    List<Purchase> findTop10ByCustomer_IdOrderByPurchaseDateDesc(Long customerId);
+    List<Purchase> findByPurchaseDateBetweenAndCustomer_Id(LocalDate start, LocalDate end, Long customerId);
+
 }

@@ -22,18 +22,25 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         return http
-                .cors().and()           // Enable CORS
-                .csrf().disable()       // Disable CSRF for stateless backend
+                .cors(cors -> cors.configure(http)) // ✅ Updated for Spring Boot 3.2
+                .csrf(csrf -> csrf.disable())       // Disable CSRF for stateless backend
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Public endpoints
-                        .anyRequest().authenticated()               // Everything else secured
+                        // ✅ Public APIs (no token required)
+                        .requestMatchers(
+                                "/api/auth/**",     // login, register, forgot-password
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/public/**",
+                                "/"
+                        ).permitAll()
+                        // ✅ Everything else requires JWT
+                        .anyRequest().authenticated()
                 )
 
-                // Add JWT filter BEFORE UsernamePasswordAuthenticationFilter
+                // ✅ Add JWT filter before UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .build();

@@ -2,347 +2,252 @@ package com.shopmanagement.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.shopmanagement.dto.StockInRequestDTO;
-import com.shopmanagement.dto.StockOutRequestDTO;
-import com.shopmanagement.model.Brand;
-import com.shopmanagement.model.Category;
-import com.shopmanagement.model.ClothType;
-import com.shopmanagement.model.Color;
-import com.shopmanagement.model.Product;
-import com.shopmanagement.model.ProductVariant;
-import com.shopmanagement.model.Purchase;
-import com.shopmanagement.model.SaleInvoice;
-import com.shopmanagement.model.SaleItem;
-import com.shopmanagement.model.Size;
-import com.shopmanagement.model.StockMovement;
-import com.shopmanagement.model.Supplier;
-import com.shopmanagement.repository.BrandRepository;
-import com.shopmanagement.repository.CategoryRepository;
-import com.shopmanagement.repository.ClothTypeRepository;
-import com.shopmanagement.repository.ColorRepository;
-import com.shopmanagement.repository.ProductRepository;
-import com.shopmanagement.repository.ProductVariantRepository;
-import com.shopmanagement.repository.PurchaseRepository;
-import com.shopmanagement.repository.SaleInvoiceRepository;
-import com.shopmanagement.repository.SaleItemRepository;
-import com.shopmanagement.repository.SizeRepository;
-import com.shopmanagement.repository.StockMovementRepository;
-import com.shopmanagement.repository.SupplierRepository;
-import com.shopmanagement.dto.RecentStockInDTO;
-import com.shopmanagement.dto.RecentStockOutDTO;
-
-import jakarta.transaction.Transactional;
+import com.shopmanagement.dto.*;
+import com.shopmanagement.model.*;
+import com.shopmanagement.repository.*;
 
 @Service
 @Transactional
 public class StockService {
 
-	@Autowired
-	private CategoryRepository categoryRepo;
-	@Autowired
-	private ProductRepository productRepo;
-	@Autowired
-	private ProductVariantRepository variantRepo;
-	@Autowired
-	private SupplierRepository supplierRepo;
-	@Autowired
-	private PurchaseRepository purchaseRepo;
-	@Autowired
-	private StockMovementRepository movementRepo;
-	@Autowired
-	private SaleItemRepository saleItemRepo;
-	@Autowired
-	private SaleInvoiceRepository saleInvoiceRepo;
-	@Autowired
-	private BrandRepository brandRepo;
-	@Autowired
-	private ColorRepository colorRepo;
-	@Autowired
-	private SizeRepository sizeRepo;
-	@Autowired
-	private ClothTypeRepository clothTypeRepo;
+    @Autowired private CategoryRepository categoryRepo;
+    @Autowired private ProductRepository productRepo;
+    @Autowired private ProductVariantRepository variantRepo;
+    @Autowired private SupplierRepository supplierRepo;
+    @Autowired private PurchaseRepository purchaseRepo;
+    @Autowired private StockMovementRepository movementRepo;
+    @Autowired private SaleItemRepository saleItemRepo;
+    @Autowired private SaleInvoiceRepository saleInvoiceRepo;
+    @Autowired private BrandRepository brandRepo;
+    @Autowired private ColorRepository colorRepo;
+    @Autowired private SizeRepository sizeRepo;
+    @Autowired private ClothTypeRepository clothTypeRepo;
+    @Autowired private CustomerRepository customerRepo;
+    @Autowired private JwtUtils jwtUtil;
 
-	@Value("${app.upload.image-dir}")
-	private String uploadImageDir;
-	
-	@Autowired
-	private StockMovementRepository stockMovementRepo;
+    @Value("${app.upload.image-dir}")
+    private String uploadImageDir;
 
-	
-	/** STOCK IN **/
-	@Transactional
-	public String stockIn(StockInRequestDTO dto, MultipartFile imageFile) {
+    /** =========================
+     *  SAVE IMAGE HELPER
+     *  ========================= */
+    private String saveImage(MultipartFile imageFile) {
+        if (imageFile == null || imageFile.isEmpty()) return null;
+        try {
+            String ext = Optional.ofNullable(imageFile.getOriginalFilename())
+                    .filter(f -> f.contains("."))
+                    .map(f -> f.substring(f.lastIndexOf(".")))
+                    .orElse("");
+            String uniqueFileName = UUID.randomUUID() + ext;
+            Path uploadPath = Paths.get(uploadImageDir);
+            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
+            Path filePath = uploadPath.resolve(uniqueFileName);
+            Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            return "/images/" + uniqueFileName;
+        } catch (IOException e) {
+            throw new RuntimeException("❌ Failed to store image file", e);
+        }
+    }
 
-		// ✅ Save image using helper method
-		if (imageFile != null && !imageFile.isEmpty()) {
-			String imageUrl = saveImage(imageFile);
-			dto.setImageUrl(imageUrl);
-		}
+    /** =========================
+     *  STOCK IN
+     *  ========================= */
+    public String stockIn(StockInRequestDTO dto, MultipartFile imageFile) {
 
-		// 1. Fetch Category
-		Category category = categoryRepo.findById(dto.getCategoryId())
-				.orElseThrow(() -> new RuntimeException("❌ Category not found with ID: " + dto.getCategoryId()));
+        Long customerId = jwtUtil.getRequiredCustomerId();
+        Customer customer = customerRepo.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-		// 2. Fetch Brand
-		Brand brand = brandRepo.findById(dto.getBrandId())
-				.orElseThrow(() -> new RuntimeException("❌ Brand not found with ID: " + dto.getBrandId()));
+        if (imageFile != null && !imageFile.isEmpty()) {
+            dto.setImageUrl(saveImage(imageFile));
+        }
 
-		// 3. Fetch Cloth Type
-		ClothType clothType = clothTypeRepo.findById(dto.getClothTypeId())
-				.orElseThrow(() -> new RuntimeException("❌ ClothType not found with ID: " + dto.getClothTypeId()));
+        Category category = categoryRepo.findById(dto.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        Brand brand = brandRepo.findById(dto.getBrandId())
+                .orElseThrow(() -> new RuntimeException("Brand not found"));
+        ClothType clothType = clothTypeRepo.findById(dto.getClothTypeId())
+                .orElseThrow(() -> new RuntimeException("ClothType not found"));
 
-		// 4. Create or fetch Product
-		Product product = productRepo.findByDesignCode(dto.getDesignCode()).orElseGet(() -> {
-			Product p = new Product();
-			p.setDesignCode(dto.getDesignCode());
-			p.setPattern(dto.getPattern());
-			p.setBrand(brand);
-			p.setClothType(clothType);
-			p.setCategory(category);
+        // ✅ find or create Product for this customer
+        Product product = productRepo.findByDesignCodeAndCustomerId(dto.getDesignCode(), customerId)
+                .orElseGet(() -> {
+                    Product p = new Product();
+                    p.setDesignCode(dto.getDesignCode());
+                    p.setPattern(dto.getPattern());
+                    p.setBrand(brand);
+                    p.setClothType(clothType);
+                    p.setCategory(category);
+                    p.setProductName(dto.getDesignCode() + " - " + brand.getBrand());
+                    p.setCustomer(customer);
+                    if (dto.getImageUrl() != null) p.setImageUrl(dto.getImageUrl());
+                    return productRepo.save(p);
+                });
 
-			String generatedName = dto.getDesignCode() + " - " + brand.getBrand() + " - " + clothType.getClothType();
-			p.setProductName(generatedName);
+        if (dto.getImageUrl() != null) {
+            product.setImageUrl(dto.getImageUrl());
+            productRepo.save(product);
+        }
 
-			if (dto.getImageUrl() != null && !dto.getImageUrl().isEmpty()) {
-				p.setImageUrl(dto.getImageUrl());
-			}
+        Color color = colorRepo.findById(dto.getColorId())
+                .orElseThrow(() -> new RuntimeException("Color not found"));
+        Size size = sizeRepo.findById(dto.getSizeId())
+                .orElseThrow(() -> new RuntimeException("Size not found"));
 
-			return productRepo.save(p);
-		});
+        // ✅ find or create variant
+        ProductVariant variant = variantRepo.findByProductSkuAndCustomer_Id(dto.getSku(), customerId).orElse(null);
+        if (variant != null) {
+            variant.setStockQty(variant.getStockQty() + dto.getQuantity());
+            variant.setSellingPrice(dto.getSellingPrice());
+        } else {
+            variant = new ProductVariant();
+            variant.setProductSku(dto.getSku());
+            variant.setColor(color);
+            variant.setSize(size);
+            variant.setSellingPrice(dto.getSellingPrice());
+            variant.setStockQty(dto.getQuantity());
+            variant.setProduct(product);
+            variant.setCustomer(customer);
+        }
+        variant = variantRepo.save(variant);
 
-		// ✅ Update image if product exists and new image is provided
-		if (dto.getImageUrl() != null && !dto.getImageUrl().isEmpty()) {
-			product.setImageUrl(dto.getImageUrl());
-			productRepo.save(product);
-		}
+        // ✅ find or create supplier
+        Supplier supplier = supplierRepo.findBySupplierNameAndCustomer_Id(dto.getSupplierName(), customerId)
+                .orElseGet(() -> {
+                    Supplier s = new Supplier();
+                    s.setSupplierName(dto.getSupplierName());
+                    s.setCustomer(customer);
+                    return supplierRepo.save(s);
+                });
 
-		// 5. Fetch Color
-		Color color = colorRepo.findById(dto.getColorId())
-				.orElseThrow(() -> new RuntimeException("❌ Color not found with ID: " + dto.getColorId()));
+        BigDecimal thresholdPrice = dto.getBasePrice()
+                .add(Optional.ofNullable(dto.getTaxPerUnit()).orElse(BigDecimal.ZERO))
+                .add(Optional.ofNullable(dto.getTransportPerUnit()).orElse(BigDecimal.ZERO));
 
-		// 6. Fetch Size
-		Size size = sizeRepo.findById(dto.getSizeId())
-				.orElseThrow(() -> new RuntimeException("❌ Size not found with ID: " + dto.getSizeId()));
+        Purchase purchase = new Purchase();
+        purchase.setProductVariant(variant);
+        purchase.setQuantity(dto.getQuantity());
+        purchase.setThresholdPrice(thresholdPrice);
+        purchase.setPurchaseDate(LocalDate.parse(dto.getPurchaseDate()));
+        purchase.setSupplier(supplier);
+        purchase.setCustomer(customer);
+        purchaseRepo.save(purchase);
 
-		// 7. Create or update ProductVariant
-		ProductVariant variant = variantRepo.findByProductSku(dto.getSku()).orElse(null);
-		if (variant != null) {
-			variant.setStockQty(variant.getStockQty() + dto.getQuantity());
-			variant.setSellingPrice(dto.getSellingPrice());
-		} else {
-			variant = new ProductVariant();
-			variant.setProductSku(dto.getSku());
-			variant.setColor(color);
-			variant.setSize(size);
-			variant.setSellingPrice(dto.getSellingPrice());
-			variant.setStockQty(dto.getQuantity());
-			variant.setProduct(product);
-		}
-		variant = variantRepo.save(variant);
+        StockMovement movement = new StockMovement();
+        movement.setProductVariant(variant);
+        movement.setMovementType("IN");
+        movement.setQuantity(dto.getQuantity());
+        movement.setMovementDate(LocalDateTime.now());
+        movement.setRemarks(dto.getRemarks());
+        movement.setCustomer(customer);
+        movementRepo.save(movement);
 
-		// 8. Supplier
-		Supplier supplier = supplierRepo.findBySupplierName(dto.getSupplierName()).orElseGet(() -> {
-			Supplier s = new Supplier();
-			s.setSupplierName(dto.getSupplierName());
-			return supplierRepo.save(s);
-		});
+        return "✅ Stock added successfully for customer " + customerId;
+    }
 
-		// 9. Calculate Threshold Price
-		BigDecimal thresholdPrice = dto.getBasePrice()
-				.add(dto.getTaxPerUnit() != null ? dto.getTaxPerUnit() : BigDecimal.ZERO)
-				.add(dto.getTransportPerUnit() != null ? dto.getTransportPerUnit() : BigDecimal.ZERO);
+    /** =========================
+     *  STOCK OUT
+     *  ========================= */
+    public String stockOut(StockOutRequestDTO dto) {
+        Long customerId = jwtUtil.getRequiredCustomerId();
+        Customer customer = customerRepo.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-		// 10. Save Purchase
-		Purchase purchase = new Purchase();
-		purchase.setProductVariant(variant);
-		purchase.setQuantity(dto.getQuantity());
-		purchase.setThresholdPrice(thresholdPrice);
-		purchase.setPurchaseDate(LocalDate.parse(dto.getPurchaseDate()));
-		purchase.setSupplier(supplier);
-		purchaseRepo.save(purchase);
+        Optional<ProductVariant> variantOpt = variantRepo.findByProductSkuAndCustomer_Id(dto.getSku(), customerId);
+        if (variantOpt.isEmpty()) return "❌ SKU not found for your account.";
 
-		// 11. Stock Movement
-		StockMovement movement = new StockMovement();
-		movement.setProductVariant(variant);
-		movement.setMovementType("IN");
-		movement.setQuantity(dto.getQuantity());
-		movement.setMovementDate(LocalDateTime.now());
-		movement.setRemarks(dto.getRemarks());
-		movementRepo.save(movement);
+        ProductVariant variant = variantOpt.get();
+        if (variant.getStockQty() < dto.getQuantity()) return "❌ Insufficient stock.";
 
-		return "✅ Stock added successfully!";
-	}
+        variant.setStockQty(variant.getStockQty() - dto.getQuantity());
+        variantRepo.save(variant);
 
-	private String saveImage(MultipartFile imageFile) {
-	    if (imageFile == null || imageFile.isEmpty()) {
-	        return null;
-	    }
+        Optional<Purchase> lastPurchaseOpt =
+                purchaseRepo.findTopByProductVariantAndCustomer_IdOrderByPurchaseDateDesc(variant, customerId);
+        if (lastPurchaseOpt.isEmpty()) return "❌ No purchase found for SKU.";
 
-	    try {
-	        String originalFilename = imageFile.getOriginalFilename();
-	        String extension = originalFilename != null && originalFilename.contains(".")
-	                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-	                : "";
+        Purchase lastPurchase = lastPurchaseOpt.get();
 
-	        String uniqueFileName = UUID.randomUUID() + extension;
+        SaleInvoice invoice = new SaleInvoice();
+        invoice.setInvoiceId("INV-" + System.currentTimeMillis());
+        invoice.setSaleDate(dto.getSaleDate().toLocalDate());
+        invoice.setTotalAmount(dto.getFinalPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
+        invoice.setCustomer(customer);
+        saleInvoiceRepo.save(invoice);
 
-	        Path uploadPath = Paths.get(uploadImageDir);
-	        if (!Files.exists(uploadPath)) {
-	            Files.createDirectories(uploadPath);
-	        }
+        SaleItem saleItem = new SaleItem();
+        saleItem.setSaleInvoice(invoice);
+        saleItem.setProductVariant(variant);
+        saleItem.setQuantity(dto.getQuantity());
+        saleItem.setSellingPrice(dto.getSellingPrice());
+        saleItem.setFinalPrice(dto.getFinalPrice());
+        saleItem.setThresholdPriceAtSale(lastPurchase.getThresholdPrice());
+        saleItem.setCustomer(customer);
+        saleItemRepo.save(saleItem);
 
-	        Path filePath = uploadPath.resolve(uniqueFileName);
-	        Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        StockMovement movement = new StockMovement();
+        movement.setProductVariant(variant);
+        movement.setQuantity(dto.getQuantity());
+        movement.setMovementType("OUT");
+        movement.setMovementDate(dto.getSaleDate());
+        movement.setRemarks(dto.getRemarks());
+        movement.setCustomer(customer);
+        movementRepo.save(movement);
 
-	        // ✅ This is the public URL that will be used to access the image
-	        return "/images/" + uniqueFileName;
+        return "✅ Stock OUT successful for SKU: " + dto.getSku() + ", Invoice: " + invoice.getInvoiceId();
+    }
 
-	    } catch (IOException e) {
-	        throw new RuntimeException("❌ Failed to store image file", e);
-	    }
-	}
+    /** =========================
+     *  RECENT STOCK IN/OUT
+     *  ========================= */
+    public List<RecentStockInDTO> getRecentStockIns() {
+        Long customerId = jwtUtil.getRequiredCustomerId();
 
-	/** STOCK OUT **/
-	public String stockOut(StockOutRequestDTO dto) {
+        List<Purchase> recentPurchases = purchaseRepo.findTop10ByCustomer_IdOrderByPurchaseDateDesc(customerId);
 
-	    // 1. Find product variant
-	    Optional<ProductVariant> variantOpt = variantRepo.findByProductSku(dto.getSku());
+        return recentPurchases.stream().map(p -> {
+            ProductVariant v = p.getProductVariant();
+            Product prod = v != null ? v.getProduct() : null;
+            return new RecentStockInDTO(
+                    prod != null ? prod.getProductName() : "Unknown",
+                    v != null ? v.getProductSku() : "N/A",
+                    Optional.ofNullable(p.getQuantity()).orElse(0),
+                    p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown",
+                    p.getPurchaseDate(),
+                    prod != null ? prod.getImageUrl() : null
+            );
+        }).collect(Collectors.toList());
+    }
 
-	    if (variantOpt.isEmpty()) {
-	        return "❌ SKU not found. Please enter a correct SKU.";
-	    }
+    public List<RecentStockOutDTO> getRecentStockOuts() {
+        Long customerId = jwtUtil.getRequiredCustomerId();
 
-	    ProductVariant variant = variantOpt.get();
+        List<StockMovement> outs =
+                movementRepo.findTop10ByMovementTypeAndCustomer_IdOrderByMovementDateDesc("OUT", customerId);
 
-	    // 2. Check stock availability
-	    if (variant.getStockQty() < dto.getQuantity()) {
-	        return "❌ Insufficient stock for SKU: " + dto.getSku();
-	    }
-
-	    variant.setStockQty(variant.getStockQty() - dto.getQuantity());
-	    variantRepo.save(variant);
-
-	    // 3. Get latest purchase batch (for threshold price)
-	    Optional<Purchase> lastPurchaseOpt = purchaseRepo.findTopByProductVariantOrderByPurchaseDateDesc(variant);
-	    if (lastPurchaseOpt.isEmpty()) {
-	        return "❌ No purchase record found for SKU: " + dto.getSku();
-	    }
-	    Purchase lastPurchase = lastPurchaseOpt.get();
-
-	    // 4. Create SaleInvoice (minimal fields only)
-	    SaleInvoice invoice = new SaleInvoice();
-	    invoice.setInvoiceId("INV-" + System.currentTimeMillis()); // simple unique ID
-	    invoice.setSaleDate(dto.getSaleDate().toLocalDate());
-	    invoice.setTotalAmount(dto.getFinalPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
-	    invoice = saleInvoiceRepo.save(invoice);
-
-	    // 5. Save SaleItem
-	    SaleItem saleItem = new SaleItem();
-	    saleItem.setSaleInvoice(invoice);
-	    saleItem.setProductVariant(variant);
-	    saleItem.setQuantity(dto.getQuantity());
-	    saleItem.setSellingPrice(dto.getSellingPrice());
-	    saleItem.setFinalPrice(dto.getFinalPrice());
-	    saleItem.setThresholdPriceAtSale(lastPurchase.getThresholdPrice());
-	    saleItemRepo.save(saleItem);
-
-	    // 6. Stock Movement
-	    StockMovement movement = new StockMovement();
-	    movement.setProductVariant(variant);
-	    movement.setQuantity(dto.getQuantity());
-	    movement.setMovementType("OUT");
-	    movement.setMovementDate(dto.getSaleDate());
-	    movement.setRemarks(dto.getRemarks());
-	    movementRepo.save(movement);
-
-	    return "✅ Stock OUT successful for SKU: " + dto.getSku() + ", Invoice: " + invoice.getInvoiceId();
-	}
-	public List<RecentStockInDTO> getRecentStockIns() {
-	    // ✅ Fetch the 10 most recent purchases
-	    List<Purchase> recentPurchases = purchaseRepo.findTop10ByOrderByPurchaseDateDesc();
-
-	    return recentPurchases.stream().map(p -> {
-	        ProductVariant variant = p.getProductVariant();
-	        Product product = (variant != null) ? variant.getProduct() : null;
-
-	        String productName = (product != null && product.getProductName() != null)
-	                ? product.getProductName()
-	                : "Unknown Product";
-
-	        String sku = (variant != null && variant.getProductSku() != null)
-	                ? variant.getProductSku()
-	                : "N/A";
-
-	        int quantityAdded = (p.getQuantity() != null) ? p.getQuantity() : 0;
-
-	        String supplierName = (p.getSupplier() != null && p.getSupplier().getSupplierName() != null)
-	                ? p.getSupplier().getSupplierName()
-	                : "Unknown Supplier";
-
-	        String imageUrl = (product != null && product.getImageUrl() != null)
-	                ? product.getImageUrl()
-	                : null;
-
-	        return new RecentStockInDTO(
-	                productName,
-	                sku,
-	                quantityAdded,
-	                supplierName,
-	                p.getPurchaseDate(),
-	                imageUrl
-	        );
-	    }).collect(Collectors.toList());
-	}
-	
-	public List<RecentStockOutDTO> getRecentStockOuts() {
-	    // Fetch the 10 most recent stock movements where movementType = "STOCK_OUT"
-	    List<StockMovement> recentStockOuts = stockMovementRepo
-	        .findTop10ByMovementTypeOrderByMovementDateDesc("OUT");
-
-	    return recentStockOuts.stream().map(s -> {
-	        ProductVariant variant = s.getProductVariant();
-	        Product product = (variant != null) ? variant.getProduct() : null;
-
-	        String productName = (product != null && product.getProductName() != null)
-	                ? product.getProductName()
-	                : "Unknown Product";
-
-	        String sku = (variant != null && variant.getProductSku() != null)
-	                ? variant.getProductSku()
-	                : "N/A";
-
-	        int quantityRemoved = (s.getQuantity() != null) ? s.getQuantity() : 0;
-
-	        String reason = (s.getRemarks() != null) ? s.getRemarks() : "N/A";
-
-	        String imageUrl = (product != null && product.getImageUrl() != null)
-	                ? product.getImageUrl()
-	                : null;
-
-	        return new RecentStockOutDTO(
-	                productName,
-	                sku,
-	                quantityRemoved,
-	                reason,
-	                s.getMovementDate(),
-	                imageUrl
-	        );
-	    }).collect(Collectors.toList());
-	}
+        return outs.stream().map(s -> {
+            ProductVariant v = s.getProductVariant();
+            Product p = v != null ? v.getProduct() : null;
+            return new RecentStockOutDTO(
+                    p != null ? p.getProductName() : "Unknown",
+                    v != null ? v.getProductSku() : "N/A",
+                    Optional.ofNullable(s.getQuantity()).orElse(0),
+                    s.getRemarks() != null ? s.getRemarks() : "N/A",
+                    s.getMovementDate(),
+                    p != null ? p.getImageUrl() : null
+            );
+        }).collect(Collectors.toList());
+    }
 }

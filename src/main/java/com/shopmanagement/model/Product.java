@@ -37,7 +37,10 @@ public class Product {
     @Column(name = "image_url")
     private String imageUrl;
 
-    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
     public String getImageUrl() {
 		return imageUrl;
 	}
@@ -104,5 +107,13 @@ public class Product {
   	public void setClothType(ClothType clothType) {
   		this.clothType = clothType;
   	}
+
+	public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
 
 }

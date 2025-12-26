@@ -6,35 +6,37 @@ import java.time.YearMonth;
 import java.util.List;
 
 public class DetailedDailyReportDTO {
+
     private LocalDate date;                // For daily report
     private YearMonth month;               // For monthly report
     private Integer year;                  // For yearly report
-
     private List<ProductSaleReportDTO> productSales; // per-product breakdown
+
     private BigDecimal totalSales;
     private BigDecimal totalProfit;
     private BigDecimal totalLoss;
-    private int totalQuantitySold;         // Add this field to track the total quantity sold
+    private int totalQuantitySold;
     private LocalDate startDate;
     private LocalDate endDate;
-    public LocalDate getStartDate() {
-		return startDate;
-	}
+    private Long customerId; // ✅ Added field
 
-	public void setStartDate(LocalDate startDate) {
-		this.startDate = startDate;
-	}
-
-	public LocalDate getEndDate() {
-		return endDate;
-	}
-
-	public void setEndDate(LocalDate endDate) {
-		this.endDate = endDate;
-	}
-
-	
     // Getters & Setters
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
     public LocalDate getDate() {
         return date;
     }
@@ -91,11 +93,19 @@ public class DetailedDailyReportDTO {
         this.totalLoss = totalLoss;
     }
 
-    public int getTotalQuantitySold() {  // Getter for totalQuantitySold
+    public int getTotalQuantitySold() {
         return totalQuantitySold;
     }
 
-    public void setTotalQuantitySold(int totalQuantitySold) {  // Setter for totalQuantitySold
+    public void setTotalQuantitySold(int totalQuantitySold) {
         this.totalQuantitySold = totalQuantitySold;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
     }
 }

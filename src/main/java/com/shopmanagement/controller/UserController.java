@@ -2,6 +2,7 @@ package com.shopmanagement.controller;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,4 +49,12 @@ public class UserController {
     public void delete(@PathVariable("id") Long id){
         userService.delete(id);
     }
+    
+    @GetMapping("/users-with-roles")
+    public ResponseEntity<List<UserDTO>> getUsersWithRoles() {
+        return ResponseEntity.ok(
+                userService.getUsersWithRolesForCurrentCustomer()
+        );
+    }
+
 }

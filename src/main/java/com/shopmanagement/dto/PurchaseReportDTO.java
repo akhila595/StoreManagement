@@ -4,11 +4,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class PurchaseReportDTO {
+
     private String supplierName;
     private String productName;
     private int quantity;
     private BigDecimal thresholdPrice;
     private LocalDate purchaseDate;
+    private Long customerId; // ✅ Added for multi-customer link
 
     // Getters & Setters
     public String getSupplierName() { return supplierName; }
@@ -25,4 +27,7 @@ public class PurchaseReportDTO {
 
     public LocalDate getPurchaseDate() { return purchaseDate; }
     public void setPurchaseDate(LocalDate purchaseDate) { this.purchaseDate = purchaseDate; }
+
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
 }

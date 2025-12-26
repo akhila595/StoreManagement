@@ -29,6 +29,10 @@ public class ProductVariant {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
     public ProductVariant() {}
 
     // --- Getters and Setters ---
@@ -96,4 +100,12 @@ public class ProductVariant {
     public void setProduct(Product product) {
         this.product = product;
     }
+
+	public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
 }

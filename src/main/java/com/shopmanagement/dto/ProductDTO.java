@@ -32,51 +32,10 @@ public class ProductDTO {
     private Long categoryId;      // Related Category ID
     private String categoryName;  // Read-only Category name
 
-    // --- Constructor used for mapping entity → DTO ---
-    public ProductDTO(
-            Long id,
-            String productName,
-            String designCode,
-            String pattern,
-            Long brandId,
-            String brandName,
-            Long clothTypeId,
-            String clothTypeName,
-            Long categoryId,
-            String categoryName
-    ) {
-        this.id = id;
-        this.productName = productName;
-        this.designCode = designCode;
-        this.pattern = pattern;
-        this.brandId = brandId;
-        this.brandName = brandName;
-        this.clothTypeId = clothTypeId;
-        this.clothTypeName = clothTypeName;
-        this.categoryId = categoryId;
-        this.categoryName = categoryName;
-    }
-    public ProductDTO(
-            String productName,
-            String designCode,
-            String pattern,
-            String imageUrl,
-            Long brandId,
-            Long clothTypeId,
-            Long categoryId
-    ) {
-        this.productName = productName;
-        this.designCode = designCode;
-        this.pattern = pattern;
-        this.imageUrl = imageUrl;
-        this.brandId = brandId;
-        this.clothTypeId = clothTypeId;
-        this.categoryId = categoryId;
-    }
-    
-    public ProductDTO() {}
-    
-    public Long getId() {
+    // --- Customer field ---
+    private Long customerId;      // ✅ Added for multi-customer reference
+
+	public Long getId() {
 		return id;
 	}
 
@@ -164,5 +123,11 @@ public class ProductDTO {
 		this.categoryName = categoryName;
 	}
 
-	
+	public Long getCustomerId() {
+		return customerId;
+	}
+
+	public void setCustomerId(Long customerId) {
+		this.customerId = customerId;
+	}
 }

@@ -130,4 +130,6 @@ public class RoleController {
         roleService.assignPermissionsToRole(roleId, request.getPermissionIds());
         return ResponseEntity.ok().build();
     }
+    
+    
 }

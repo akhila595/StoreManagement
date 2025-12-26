@@ -5,7 +5,10 @@ import java.util.List;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
@@ -19,7 +22,9 @@ public class SaleInvoice {
     private String paymentMode;
     private BigDecimal discountTotal;
     private BigDecimal totalAmount;
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
     @OneToMany(mappedBy = "saleInvoice", cascade = CascadeType.ALL)
     private List<SaleItem> saleItems;
 
@@ -78,5 +83,13 @@ public class SaleInvoice {
     public void setSaleItems(List<SaleItem> saleItems) {
         this.saleItems = saleItems;
     }
+
+	public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
 	
 }

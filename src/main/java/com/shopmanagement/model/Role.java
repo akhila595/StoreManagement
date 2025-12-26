@@ -4,90 +4,78 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
-@Table(name = "role")
+@Table(
+    name = "role",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"name", "customer_id"})
+    }
+)
 public class Role {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@Column(nullable = false, unique = true)
-	private String name; // e.g., "ADMIN", "MANAGER", "USER"
+    @Column(nullable = false)
+    private String name; // e.g., "ADMIN", "MANAGER", "USER"
 
-	private String description;
+    private String description;
 
-	@ManyToMany(fetch = FetchType.EAGER) // EAGER ensures permissions load with role
-	@JoinTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
-	private Set<Permission> permissions = new HashSet<>();
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "role_permissions",
+        joinColumns = @JoinColumn(name = "role_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<Permission> permissions = new HashSet<>();
 
-	// ======== Constructors ========
-	public Role() {
-	}
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = true)
+    private Customer customer;
 
-	// Used when seeding roles
-	public Role(String name, String description) {
-		this.name = name;
-		this.description = description;
-	}
+    // ======== Constructors ========
+    public Role() {}
 
-	// ======== Getters & Setters ========
-	public Long getId() {
-		return id;
-	}
+    public Role(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    // ======== Getters & Setters ========
+    public Long getId() { return id; }
 
-	public String getName() {
-		return name;
-	}
+    public void setId(Long id) { this.id = id; }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public String getName() { return name; }
 
-	public String getDescription() {
-		return description;
-	}
+    public void setName(String name) { this.name = name; }
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    public String getDescription() { return description; }
 
-	public Set<Permission> getPermissions() {
-		return permissions;
-	}
+    public void setDescription(String description) { this.description = description; }
 
-	public void setPermissions(Set<Permission> permissions) {
-		this.permissions = permissions;
-	}
+    public Set<Permission> getPermissions() { return permissions; }
 
-	// ======== equals & hashCode ========
-	@Override
-	public boolean equals(Object o) {
-		if (this == o)
-			return true;
-		if (!(o instanceof Role))
-			return false;
-		Role role = (Role) o;
-		return Objects.equals(id, role.id);
-	}
+    public void setPermissions(Set<Permission> permissions) { this.permissions = permissions; }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(id);
-	}
+    public Customer getCustomer() { return customer; }
+
+    public void setCustomer(Customer customer) { this.customer = customer; }
+
+    // ======== equals & hashCode ========
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Role)) return false;
+        Role role = (Role) o;
+        return Objects.equals(id, role.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }

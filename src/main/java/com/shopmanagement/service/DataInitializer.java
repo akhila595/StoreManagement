@@ -18,6 +18,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SizeRepository sizeRepository;
     private final ColorRepository colorRepository;
     private final CategoryRepository categoryRepository;
+    private final CustomerRepository customerRepository;
 
     public DataInitializer(RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
@@ -25,8 +26,8 @@ public class DataInitializer implements CommandLineRunner {
                            ClothTypeRepository clothTypeRepository,
                            SizeRepository sizeRepository,
                            ColorRepository colorRepository,
-                           CategoryRepository categoryRepository) {
-
+                           CategoryRepository categoryRepository,
+                           CustomerRepository customerRepository) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.brandRepository = brandRepository;
@@ -34,6 +35,7 @@ public class DataInitializer implements CommandLineRunner {
         this.sizeRepository = sizeRepository;
         this.colorRepository = colorRepository;
         this.categoryRepository = categoryRepository;
+        this.customerRepository = customerRepository;
     }
 
     @Override
@@ -56,13 +58,10 @@ public class DataInitializer implements CommandLineRunner {
     // PERMISSIONS
     // =====================================================
     private void seedPermissionsIfEmpty() {
-        long count = permissionRepository.count();
-        if (count > 0) {
-            System.out.println("➡️ Permissions already exist (" + count + "), skipping seeding.");
+        if (permissionRepository.count() > 0) {
+            System.out.println("➡️ Permissions already exist, skipping.");
             return;
         }
-
-        System.out.println("🆕 Seeding default permissions...");
 
         List<Permission> required = Arrays.asList(
             new Permission("PRODUCT_VIEW", "View Products", "Can view product listings"),
@@ -107,147 +106,83 @@ public class DataInitializer implements CommandLineRunner {
     // ROLES
     // =====================================================
     private void seedRolesIfEmpty() {
-        long count = roleRepository.count();
-        if (count > 0) {
-            System.out.println("➡️ Roles already exist (" + count + "), skipping seeding.");
+        if (roleRepository.count() > 0) {
+            System.out.println("➡️ Roles already exist, skipping.");
             return;
         }
 
-        System.out.println("🆕 Seeding default roles...");
+        System.out.println("🆕 Seeding default global roles...");
 
-        Role superAdmin = new Role("SUPER_ADMIN", "Highest access with full control");
+        // 🔹 Create a default customer (for initial roles only)
+        Customer defaultCustomer = customerRepository.findByCustomerName("Default Customer")
+            .orElseGet(() -> {
+                Customer c = new Customer();
+                c.setCustomerName("Default Customer");
+                c.setEmail("default@example.com");
+                c.setPhone("9999999999");
+                return customerRepository.save(c);
+            });
+
+        // 🔹 Global roles (no customer)
+        Role superAdmin = new Role("SUPERADMIN", "Full system-wide access");
         superAdmin.setPermissions(new HashSet<>(permissionRepository.findAll()));
+        superAdmin.setCustomer(null);
         roleRepository.save(superAdmin);
 
+        // 🔹 Default tenant roles (for demo)
         Role admin = new Role("ADMIN", "Administrator access");
-        admin.setPermissions(new HashSet<>(Arrays.asList(
-            find("PRODUCT_VIEW"), find("PRODUCT_ADD"), find("PRODUCT_EDIT"), find("PRODUCT_DELETE"),
-            find("INVENTORY_MANAGE"), find("BRAND_MANAGE"), find("CATEGORY_MANAGE"),
-            find("SIZE_MANAGE"), find("COLOR_MANAGE"), find("CLOTH_TYPE_MANAGE"),
-            find("REPORT_VIEW"), find("USER_VIEW"), find("USER_CREATE"), find("USER_EDIT"),
-            find("USER_DELETE"), find("ROLE_VIEW"), find("ROLE_CREATE"), find("ROLE_EDIT"),
-            find("ROLE_DELETE"), find("PERMISSION_MANAGE"), find("SYSTEM_SETTINGS_EDIT"), find("VIEW_LOGS")
-        )));
+        admin.setCustomer(defaultCustomer);
+        admin.setPermissions(new HashSet<>(permissionRepository.findAll()));
         roleRepository.save(admin);
 
         Role manager = new Role("MANAGER", "Manager role");
-        manager.setPermissions(new HashSet<>(Arrays.asList(
-            find("PRODUCT_VIEW"), find("PRODUCT_ADD"), find("PRODUCT_EDIT"),
-            find("REPORT_VIEW"), find("INVENTORY_MANAGE")
-        )));
+        manager.setCustomer(defaultCustomer);
+        manager.setPermissions(new HashSet<>(Arrays.asList(find("PRODUCT_VIEW"), find("REPORT_VIEW"))));
         roleRepository.save(manager);
 
         Role user = new Role("USER", "Standard user");
-        user.setPermissions(new HashSet<>(Arrays.asList(
-            find("PRODUCT_VIEW"), find("INVENTORY_VIEW"), find("REPORT_VIEW")
-        )));
+        user.setCustomer(defaultCustomer);
+        user.setPermissions(new HashSet<>(Arrays.asList(find("PRODUCT_VIEW"), find("INVENTORY_VIEW"))));
         roleRepository.save(user);
 
         System.out.println("✅ Roles table seeded successfully.");
     }
 
     // =====================================================
-    // BRANDS
+    // OTHER STATIC DATA
     // =====================================================
     private void seedBrandsIfEmpty() {
-        if (brandRepository.count() > 0) {
-            System.out.println("➡️ Brands already exist, skipping seeding.");
-            return;
-        }
-
-        List<String> list = Arrays.asList(
-            "Nike", "Adidas", "Puma", "Levi’s", "H&M", "Zara", "Reebok",
-            "Uniqlo", "Tommy Hilfiger", "Under Armour", "Roadster", "U.S. Polo Assn"
-        );
-
-        for (String name : list) {
-            if (!brandRepository.existsByBrand(name)) {
-                brandRepository.save(new Brand(name));
-            }
-        }
-        System.out.println("✅ Brands table seeded successfully.");
+        if (brandRepository.count() > 0) return;
+        List<String> brands = Arrays.asList("Nike","Adidas","Puma","Levi’s","H&M","Zara","Reebok");
+        brands.forEach(b -> { if (!brandRepository.existsByBrand(b)) brandRepository.save(new Brand(b)); });
     }
 
-    // =====================================================
     private void seedClothTypesIfEmpty() {
-        if (clothTypeRepository.count() > 0) {
-            System.out.println("➡️ Cloth types already exist, skipping seeding.");
-            return;
-        }
-
-        List<String> list = Arrays.asList(
-            "Shirt", "T-Shirt", "Jeans", "Jacket", "Kurta", "Saree", "Shorts",
-            "Tracksuit", "Hoodie", "Blazer"
-        );
-
-        for (String name : list) {
-            if (!clothTypeRepository.existsByClothType(name)) {
-                clothTypeRepository.save(new ClothType(name));
-            }
-        }
-        System.out.println("✅ Cloth types table seeded successfully.");
+        if (clothTypeRepository.count() > 0) return;
+        List<String> types = Arrays.asList("Shirt","T-Shirt","Jeans","Jacket","Kurta","Saree");
+        types.forEach(t -> { if (!clothTypeRepository.existsByClothType(t)) clothTypeRepository.save(new ClothType(t)); });
     }
 
-    // =====================================================
     private void seedSizesIfEmpty() {
-        if (sizeRepository.count() > 0) {
-            System.out.println("➡️ Sizes already exist, skipping seeding.");
-            return;
-        }
-
-        List<String> sizes = Arrays.asList("XS", "S", "M", "L", "XL", "XXL", "3XL", "Free Size");
-
-        for (String s : sizes) {
-            if (!sizeRepository.existsBySize(s)) {
-                sizeRepository.save(new Size(s));
-            }
-        }
-        System.out.println("✅ Sizes table seeded successfully.");
+        if (sizeRepository.count() > 0) return;
+        List<String> sizes = Arrays.asList("S","M","L","XL","XXL");
+        sizes.forEach(s -> { if (!sizeRepository.existsBySize(s)) sizeRepository.save(new Size(s)); });
     }
 
-    // =====================================================
     private void seedColorsIfEmpty() {
-        if (colorRepository.count() > 0) {
-            System.out.println("➡️ Colors already exist, skipping seeding.");
-            return;
-        }
-
-        List<String> colors = Arrays.asList(
-            "Red", "Blue", "Black", "White", "Green", "Yellow", "Pink", "Purple",
-            "Gray", "Orange", "Brown", "Beige"
-        );
-
-        for (String c : colors) {
-            if (!colorRepository.existsByColor(c)) {
-                colorRepository.save(new Color(c));
-            }
-        }
-        System.out.println("✅ Colors table seeded successfully.");
+        if (colorRepository.count() > 0) return;
+        List<String> colors = Arrays.asList("Red","Blue","Black","White","Green");
+        colors.forEach(c -> { if (!colorRepository.existsByColor(c)) colorRepository.save(new Color(c)); });
     }
 
-    // =====================================================
     private void seedCategoriesIfEmpty() {
-        if (categoryRepository.count() > 0) {
-            System.out.println("➡️ Categories already exist, skipping seeding.");
-            return;
-        }
-
-        List<String> list = Arrays.asList(
-            "Men", "Women", "Kids", "Accessories", "Sportswear", "Footwear",
-            "Winter Collection", "Ethnic Wear"
-        );
-
-        for (String name : list) {
-            if (!categoryRepository.existsByCategoryName(name)) {
-                categoryRepository.save(new Category(name));
-            }
-        }
-        System.out.println("✅ Categories table seeded successfully.");
+        if (categoryRepository.count() > 0) return;
+        List<String> cats = Arrays.asList("Men","Women","Kids","Accessories","Footwear");
+        cats.forEach(c -> { if (!categoryRepository.existsByCategoryName(c)) categoryRepository.save(new Category(c)); });
     }
 
-    // =====================================================
     private Permission find(String code) {
         return permissionRepository.findByCode(code)
-                .orElseThrow(() -> new RuntimeException("Missing permission: " + code));
+            .orElseThrow(() -> new RuntimeException("Missing permission: " + code));
     }
 }

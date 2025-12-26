@@ -3,6 +3,8 @@ package com.shopmanagement.controller;
 import com.shopmanagement.service.UserService;
 import com.shopmanagement.service.RoleService;
 import com.shopmanagement.service.PermissionService;
+import com.shopmanagement.service.JwtUtils;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -16,15 +18,18 @@ public class DashboardStatsController {
     private final UserService userService;
     private final RoleService roleService;
     private final PermissionService permissionService;
+    private final JwtUtils jwtUtils;
 
     public DashboardStatsController(
             UserService userService,
             RoleService roleService,
-            PermissionService permissionService
+            PermissionService permissionService,
+            JwtUtils jwtUtils
     ) {
         this.userService = userService;
         this.roleService = roleService;
         this.permissionService = permissionService;
+        this.jwtUtils = jwtUtils;
     }
 
     @GetMapping("/stats")
@@ -35,7 +40,7 @@ public class DashboardStatsController {
         stats.put("totalRoles", roleService.getAll().size());
         stats.put("totalPermissions", permissionService.getAll().size());
 
-        // If you have logs in DB, replace with logsService.count()
+        // Logs intentionally disabled
         stats.put("totalLogs", 0);
 
         return stats;

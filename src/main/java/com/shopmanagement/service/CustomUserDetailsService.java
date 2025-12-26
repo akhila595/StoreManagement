@@ -7,7 +7,6 @@ import com.shopmanagement.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
@@ -20,24 +19,42 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired
     private UserRepository userRepo;
 
+    // ==========================================================
+    // Load user by email (used during login)
+    // ==========================================================
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        // 🔥 Convert roles → Spring authorities
+        return buildUserDetails(user);
+    }
+
+    // ==========================================================
+    // Load user by ID (used after decoding JWT)
+    // ==========================================================
+    public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found for ID: " + userId));
+
+        return buildUserDetails(user);
+    }
+
+    // ==========================================================
+    // Build Spring UserDetails object from our User entity
+    // ==========================================================
+    private UserDetails buildUserDetails(User user) {
         List<GrantedAuthority> authorities = user.getRoles()
                 .stream()
-                .map(Role::getName)                  // SUPER_ADMIN
-                .map(r -> "ROLE_" + r)              // ROLE_SUPER_ADMIN
+                .map(Role::getName)
+                .map(r -> "ROLE_" + r.toUpperCase())
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
 
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                authorities   // 🔥 ROLES HERE
+                user.getEmail(),        // username
+                user.getPassword(),     // password
+                authorities             // roles/authorities
         );
     }
 }

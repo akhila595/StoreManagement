@@ -30,6 +30,10 @@ public class SaleItem {
     @JoinColumn(name = "variant_id")
     private ProductVariant productVariant;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+    
 	public Long getSaleItemId() {
 		return saleItemId;
 	}
@@ -94,4 +98,12 @@ public class SaleItem {
 
       Loss if Sale Price < Cost Price.
 	 */
+
+	public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
 }

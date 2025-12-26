@@ -34,56 +34,44 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    // ------------------------------------
-    //  REGISTER (Default role = USER)
-    // ------------------------------------
+    // REGISTER
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequestDTO request) {
-        String msg = authenticationService.register(
-                request.getEmail(),
-                request.getPassword(),
-                request.getName()
-        );
+    public ResponseEntity<?> register(@RequestBody RegisterRequestDTO req) {
+        String msg = authenticationService.register(req.getEmail(), req.getPassword(), req.getName());
         return ResponseEntity.ok(Map.of("message", msg));
     }
 
-    // ------------------------------------
-    //  LOGIN (returns token + roles)
-    // ------------------------------------
+    // LOGIN
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO req) {
-        return ResponseEntity.ok(authenticationService.authenticate(
-                req.getEmail(),
-                req.getPassword()
-        ));
+        return ResponseEntity.ok(authenticationService.authenticate(req.getEmail(), req.getPassword()));
     }
 
-    // ------------------------------------
-    //  CURRENT USER (decoded from JWT)
-    // ------------------------------------
+    // CURRENT USER — from JWT
     @GetMapping("/me")
     public ResponseEntity<?> currentUser(@RequestHeader("Authorization") String header) {
         String token = header.replace("Bearer ", "");
-        String email = jwtUtil.extractEmail(token);
 
-        User user = userRepository.findByEmail(email)
+        Long userId = jwtUtil.extractUserId(token);
+        Long customerId = jwtUtil.extractCustomerId(token);
+
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return ResponseEntity.ok(
                 Map.of(
                         "name", user.getName(),
                         "email", user.getEmail(),
-                        "roles", user.getRoleNames()
+                        "roles", user.getRoleNames(),
+                        "customerId", customerId
                 )
         );
     }
 
-    // ------------------------------------
-    //  FORGOT PASSWORD
-    // ------------------------------------
+    // FORGOT PASSWORD
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
-        passwordResetService.sendPasswordResetLink(request.getEmail());
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequestDTO req) {
+        passwordResetService.sendPasswordResetLink(req.getEmail());
         return ResponseEntity.ok(Map.of("message", "Password reset link sent"));
     }
 }

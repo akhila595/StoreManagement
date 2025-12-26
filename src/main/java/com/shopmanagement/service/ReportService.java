@@ -10,14 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.shopmanagement.dto.*;
-import com.shopmanagement.model.Product;
-import com.shopmanagement.model.ProductVariant;
-import com.shopmanagement.model.Purchase;
-import com.shopmanagement.model.SaleItem;
-import com.shopmanagement.repository.ProductRepository;
-import com.shopmanagement.repository.ProductVariantRepository;
-import com.shopmanagement.repository.PurchaseRepository;
-import com.shopmanagement.repository.SaleItemRepository;
+import com.shopmanagement.model.*;
+import com.shopmanagement.repository.*;
 
 @Service
 public class ReportService {
@@ -30,34 +24,78 @@ public class ReportService {
 
     @Autowired
     private ProductRepository productRepository;
-    
-    @Autowired
-    ProductVariantRepository productVariantRepository;
 
-    /** DAILY REPORT **/
+    @Autowired
+    private ProductVariantRepository productVariantRepository;
+
+    @Autowired
+    private JwtUtils jwtUtils;
+
+    // ==========================================================
+    // DAILY REPORT
+    // ==========================================================
     public DetailedDailyReportDTO getDailyReport(LocalDate date) {
-        return calculateReport(
-                saleItemRepo.findBySaleInvoice_SaleDate(date),
-                date
-        );
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateAndCustomer_Id(date, customerId);
+
+        return calculateReport(sales, date, customerId);
     }
 
-    /** MONTHLY REPORT **/
+    // ==========================================================
+    // MONTHLY REPORT
+    // ==========================================================
     public DetailedDailyReportDTO getMonthlyReport(YearMonth month) {
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(
-                month.atDay(1), month.atEndOfMonth()
-        );
+        Long customerId = jwtUtils.getRequiredCustomerId();
 
-        DetailedDailyReportDTO report = calculateReport(sales, null);
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(
+                month.atDay(1), month.atEndOfMonth(), customerId);
+
+        DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
         report.setMonth(month);
         return report;
     }
 
-    /** CATEGORY-WISE PROFIT/LOSS **/
+    // ==========================================================
+    // WEEKLY REPORT
+    // ==========================================================
+    public DetailedDailyReportDTO getWeeklyReport(LocalDate startDate, LocalDate endDate) {
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(startDate, endDate, customerId);
+
+        DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        return report;
+    }
+
+    // ==========================================================
+    // YEARLY REPORT
+    // ==========================================================
+    public DetailedDailyReportDTO getYearlyReport(int year) {
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        LocalDate start = LocalDate.of(year, 1, 1);
+        LocalDate end = LocalDate.of(year, 12, 31);
+
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(start, end, customerId);
+
+        DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
+        report.setYear(year);
+        return report;
+    }
+
+    // ==========================================================
+    // CATEGORY-WISE PROFIT/LOSS
+    // ==========================================================
     public List<CategoryReportDTO> getCategoryWiseReport(LocalDate startDate, LocalDate endDate) {
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(startDate, endDate);
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(startDate, endDate, customerId);
 
         Map<String, CategoryReportDTO> categoryMap = new HashMap<>();
+
         for (SaleItem sale : sales) {
             String categoryName = sale.getProductVariant().getProduct().getCategory().getCategoryName();
             CategoryReportDTO categoryReport = categoryMap
@@ -73,35 +111,42 @@ public class ReportService {
         return new ArrayList<>(categoryMap.values());
     }
 
-    /** SUPPLIER PURCHASE HISTORY **/
+    // ==========================================================
+    // SUPPLIER PURCHASE HISTORY
+    // ==========================================================
     public List<PurchaseReportDTO> getSupplierPurchaseHistory(Long supplierId, LocalDate startDate, LocalDate endDate) {
-        List<Purchase> purchases =
-                purchaseRepo.findBySupplier_SupplierIdAndPurchaseDateBetween(supplierId, startDate, endDate);
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<Purchase> purchases = purchaseRepo.findBySupplier_SupplierIdAndPurchaseDateBetweenAndCustomer_Id(
+                supplierId, startDate, endDate, customerId);
 
         List<PurchaseReportDTO> reportList = new ArrayList<>();
 
         for (Purchase p : purchases) {
             PurchaseReportDTO dto = new PurchaseReportDTO();
-            dto.setSupplierName(p.getSupplier().getSupplierName());
+            dto.setSupplierName(p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown");
             dto.setPurchaseDate(p.getPurchaseDate());
-            dto.setProductName(p.getProductVariant().getProduct().getProductName());
+            dto.setProductName(p.getProductVariant() != null
+                    ? p.getProductVariant().getProduct().getProductName()
+                    : "Unknown");
             dto.setQuantity(p.getQuantity());
             dto.setThresholdPrice(p.getThresholdPrice());
-
+            dto.setCustomerId(customerId);
             reportList.add(dto);
         }
 
-        
         return reportList;
     }
 
-    /** TOP-SELLING PRODUCTS **/
-    /** TOP-SELLING PRODUCTS **/
+    // ==========================================================
+    // TOP-SELLING PRODUCTS
+    // ==========================================================
     public List<TopSellingProductDTO> getTopSellingProducts(LocalDate startDate, LocalDate endDate, int limit) {
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(startDate, endDate);
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(startDate, endDate, customerId);
 
         Map<ProductVariant, Integer> variantQtyMap = new HashMap<>();
-
         for (SaleItem sale : sales) {
             ProductVariant variant = sale.getProductVariant();
             variantQtyMap.put(variant, variantQtyMap.getOrDefault(variant, 0) + sale.getQuantity());
@@ -122,14 +167,40 @@ public class ReportService {
                             v.getColor() != null ? v.getColor().getColor() : "-",
                             v.getSize() != null ? v.getSize().getSize() : "-",
                             e.getValue(),
-                            p.getImageUrl()
+                            p.getImageUrl(),
+                            customerId
                     );
                 })
                 .collect(Collectors.toList());
     }
 
-    /** COMMON REPORT CALCULATION **/
-    private DetailedDailyReportDTO calculateReport(List<SaleItem> sales, LocalDate date) {
+    // ==========================================================
+    // LOW STOCK PRODUCTS
+    // ==========================================================
+    public List<LowStockProductDTO> getLowStockProducts() {
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        int lowStockThreshold = 10;
+        List<ProductVariant> lowStockVariants =
+                productVariantRepository.findByStockQtyLessThanAndCustomer_Id(lowStockThreshold, customerId);
+
+        List<LowStockProductDTO> dtoList = new ArrayList<>();
+        for (ProductVariant variant : lowStockVariants) {
+            LowStockProductDTO dto = new LowStockProductDTO();
+            dto.setProductName(variant.getProduct().getProductName());
+            dto.setSku(variant.getProductSku());
+            dto.setStockQty(variant.getStockQty());
+            dto.setCustomerId(customerId);
+            dtoList.add(dto);
+        }
+
+        return dtoList;
+    }
+
+    // ==========================================================
+    // COMMON REPORT CALCULATION
+    // ==========================================================
+    private DetailedDailyReportDTO calculateReport(List<SaleItem> sales, LocalDate date, Long customerId) {
         BigDecimal totalSales = BigDecimal.ZERO;
         BigDecimal totalProfit = BigDecimal.ZERO;
         BigDecimal totalLoss = BigDecimal.ZERO;
@@ -164,12 +235,14 @@ public class ReportService {
             productReport.setCostTotal(costTotal);
             productReport.setProfit(profit);
             productReport.setLoss(loss);
+            productReport.setCustomerId(customerId);
 
             productReports.add(productReport);
         }
 
         DetailedDailyReportDTO report = new DetailedDailyReportDTO();
         report.setDate(date);
+        report.setCustomerId(customerId);
         report.setTotalQuantitySold(totalQuantitySold);
         report.setProductSales(productReports);
         report.setTotalSales(totalSales);
@@ -179,75 +252,29 @@ public class ReportService {
         return report;
     }
 
-    public List<ProductDTO> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(p -> new ProductDTO(
-                        p.getProductId(), // id
-                        p.getProductName(), // productName
-                        p.getDesignCode(), // designCode
-                        p.getPattern(), // pattern
-                        p.getBrand() != null ? p.getBrand().getId() : null, // brandId
-                        p.getBrand() != null ? p.getBrand().getBrand() : null, // brandName
-                        p.getClothType() != null ? p.getClothType().getId() : null, // clothTypeId
-                        p.getClothType() != null ? p.getClothType().getClothType() : null, // clothTypeName
-                        p.getCategory() != null ? p.getCategory().getCategoryId() : null, // categoryId
-                        p.getCategory() != null ? p.getCategory().getCategoryName() : null // categoryName
-                ))
-                .toList();
-    }
-
-
-    public List<LowStockProductDTO> getLowStockProducts() {
-        int lowStockThreshold = 10; // Threshold for low stock.
-        
-        // Fetch product variants with low stock
-        List<ProductVariant> lowStockVariants = productVariantRepository.findByStockQtyLessThan(lowStockThreshold);
-
-        List<LowStockProductDTO> dtoList = new ArrayList<>();
-        
-        for (ProductVariant variant : lowStockVariants) {
-            LowStockProductDTO dto = new LowStockProductDTO();
-            dto.setProductName(variant.getProduct().getProductName());
-            dto.setSku(variant.getProductSku()); // ✅ Set SKU
-            dto.setStockQty(variant.getStockQty());
-            dtoList.add(dto);
-        }
-
-        return dtoList;
-    }
-
-    public DetailedDailyReportDTO getWeeklyReport(LocalDate startDate, LocalDate endDate) {
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(startDate, endDate);
-        DetailedDailyReportDTO report = calculateReport(sales, null); // No specific "date"
-        report.setStartDate(startDate);
-        report.setEndDate(endDate);
-        return report;
-    }
-    public DetailedDailyReportDTO getYearlyReport(int year) {
-        LocalDate start = LocalDate.of(year, 1, 1);
-        LocalDate end = LocalDate.of(year, 12, 31);
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetween(start, end);
-        DetailedDailyReportDTO report = calculateReport(sales, null);
-        report.setYear(year);
-        return report;
-    }
-
+    // ==========================================================
+    // SUPPLIER PURCHASE SUMMARY (All Suppliers)
+    // ==========================================================
     public List<PurchaseReportDTO> getAllSuppliersPurchaseReport(LocalDate startDate, LocalDate endDate) {
-        List<Purchase> purchases = purchaseRepo.findByPurchaseDateBetween(startDate, endDate);
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<Purchase> purchases = purchaseRepo.findByPurchaseDateBetweenAndCustomer_Id(startDate, endDate, customerId);
 
         List<PurchaseReportDTO> reportList = new ArrayList<>();
+
         for (Purchase p : purchases) {
             PurchaseReportDTO dto = new PurchaseReportDTO();
-            dto.setSupplierName(p.getSupplier().getSupplierName());
-            dto.setPurchaseDate(p.getPurchaseDate());
-            dto.setProductName(p.getProductVariant().getProduct().getProductName());
+            dto.setSupplierName(p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown");
+            dto.setProductName(p.getProductVariant() != null
+                    ? p.getProductVariant().getProduct().getProductName()
+                    : "Unknown");
             dto.setQuantity(p.getQuantity());
             dto.setThresholdPrice(p.getThresholdPrice());
-
+            dto.setPurchaseDate(p.getPurchaseDate());
+            dto.setCustomerId(customerId);
             reportList.add(dto);
         }
 
         return reportList;
     }
-
 }

@@ -3,6 +3,7 @@ package com.shopmanagement.dto;
 import java.math.BigDecimal;
 
 public class ProductSaleReportDTO {
+
     private String productName;   // e.g., design code
     private String sku;
     private int quantity;
@@ -10,6 +11,7 @@ public class ProductSaleReportDTO {
     private BigDecimal costTotal;
     private BigDecimal profit;
     private BigDecimal loss;
+    private Long customerId;      // ✅ Added for tenant separation
 
     // Getters & Setters
     public String getProductName() { return productName; }
@@ -32,4 +34,7 @@ public class ProductSaleReportDTO {
 
     public BigDecimal getLoss() { return loss; }
     public void setLoss(BigDecimal loss) { this.loss = loss; }
+
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
 }

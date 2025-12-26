@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtUtil {
@@ -17,44 +19,47 @@ public class JwtUtil {
     @Value("${jwt.expiration}") // expiration in milliseconds
     private long expiration;
 
-    // ✅ Build the signing key from the secret
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // ✅ Generate JWT token for user email
-    public String generateToken(String email) {
+    // ✅ Generate token with userId and customerId only
+    public String generateToken(Long userId, Long customerId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        claims.put("customerId", customerId);
+
         return Jwts.builder()
-                .setSubject(email)
+                .setClaims(claims)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // ✅ Extract email from token
-    public String extractEmail(String token) {
-        return parseToken(token).getBody().getSubject();
+    public Long extractUserId(String token) {
+        Object val = parseToken(token).getBody().get("userId");
+        return val != null ? Long.valueOf(val.toString()) : null;
     }
 
-    // ✅ Check if token is valid
-    public boolean validateToken(String token, String email) {
-        final String tokenEmail = extractEmail(token);
-        return (tokenEmail.equals(email) && !isTokenExpired(token));
+    public Long extractCustomerId(String token) {
+        Object val = parseToken(token).getBody().get("customerId");
+        return val != null ? Long.valueOf(val.toString()) : null;
     }
 
-    // ✅ Check token expiration
-    private boolean isTokenExpired(String token) {
-        Date expirationDate = parseToken(token).getBody().getExpiration();
-        return expirationDate.before(new Date());
+    public boolean validateToken(String token) {
+        try {
+            parseToken(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 
-    // ✅ Parse the token
     private Jws<Claims> parseToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token);
     }
-    
 }

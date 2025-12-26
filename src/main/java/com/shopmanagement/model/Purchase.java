@@ -27,6 +27,10 @@ public class Purchase {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+    
 	public Long getPurchaseId() {
 		return purchaseId;
 	}
@@ -75,5 +79,11 @@ public class Purchase {
 		this.supplier = supplier;
 	}
 
-   
+	public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
 }

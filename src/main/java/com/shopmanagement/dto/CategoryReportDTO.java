@@ -3,11 +3,13 @@ package com.shopmanagement.dto;
 import java.math.BigDecimal;
 
 public class CategoryReportDTO {
+
     private String categoryName;
     private BigDecimal totalSales = BigDecimal.ZERO;
     private BigDecimal totalCost = BigDecimal.ZERO;
     private BigDecimal profit = BigDecimal.ZERO;
     private BigDecimal loss = BigDecimal.ZERO;
+    private Long customerId; // new field
 
     public CategoryReportDTO(String categoryName) {
         this.categoryName = categoryName;
@@ -40,4 +42,7 @@ public class CategoryReportDTO {
 
     public BigDecimal getLoss() { return loss; }
     public void setLoss(BigDecimal loss) { this.loss = loss; }
+
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
 }
