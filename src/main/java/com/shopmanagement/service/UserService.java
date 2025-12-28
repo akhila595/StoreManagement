@@ -171,6 +171,11 @@ public class UserService {
 
             user.setRoles(roles);
         }
+     // ✅ Profile image update (optional)
+        if (dto.getProfileImage() != null) {
+            user.setProfileImage(dto.getProfileImage());
+        }
+
         // 🚫 If roleNames == null → DO NOTHING (keep existing roles)
 
         userRepo.save(user);
@@ -204,12 +209,21 @@ public class UserService {
         dto.setId(u.getId());
         dto.setEmail(u.getEmail());
         dto.setName(u.getName());
-        dto.setRoleNames(u.getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
+        dto.setRoleNames(
+            u.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet())
+        );
+
         if (u.getCustomer() != null)
             dto.setCustomerId(u.getCustomer().getId());
+
+        // ✅ ADD THIS
+        dto.setProfileImage(u.getProfileImage());
+
         return dto;
     }
-    
+
     public List<UserDTO> getUsersWithRolesForCurrentCustomer() {
 
         Long customerId = jwtUtils.getRequiredCustomerId();

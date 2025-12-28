@@ -12,15 +12,21 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /**
+     * Physical upload directory
+     * Example: uploads/images
+     */
     @Value("${app.upload.image-dir}")
     private String uploadDir;
 
+    // ===============================
+    // CORS CONFIGURATION
+    // ===============================
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins("http://localhost:5173")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                // ✅ ALLOW ALL CUSTOM HEADERS USED BY UI
                 .allowedHeaders(
                         "Authorization",
                         "Content-Type",
@@ -31,11 +37,16 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowCredentials(true);
     }
 
+    // ===============================
+    // STATIC IMAGE SERVING
+    // ===============================
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadPath = Paths.get(uploadDir);
 
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:" + uploadPath.toFile().getAbsolutePath() + "/");
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+
+        registry
+            .addResourceHandler("/images/**")
+            .addResourceLocations("file:" + uploadPath + "/");
     }
 }

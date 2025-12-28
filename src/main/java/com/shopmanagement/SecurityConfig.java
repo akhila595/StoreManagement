@@ -23,31 +23,37 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .cors(cors -> cors.configure(http)) // ✅ Updated for Spring Boot 3.2
-                .csrf(csrf -> csrf.disable())       // Disable CSRF for stateless backend
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> {})                 // Spring Boot 3.x style
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm ->
+                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
 
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Public APIs (no token required)
+                        // ✅ PUBLIC ENDPOINTS
                         .requestMatchers(
-                                "/api/auth/**",     // login, register, forgot-password
+                                "/api/auth/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/public/**",
-                                "/"
+                                "/",
+                                "/images/**"   // 🔥 VERY IMPORTANT
                         ).permitAll()
-                        // ✅ Everything else requires JWT
+
+                        // 🔒 Everything else secured
                         .anyRequest().authenticated()
                 )
 
-                // ✅ Add JWT filter before UsernamePasswordAuthenticationFilter
+                // ✅ JWT Filter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 

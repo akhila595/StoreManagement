@@ -105,7 +105,8 @@ public class AuthenticationService {
                 ? user.getRoleNames()
                 : Set.of("SUPERADMIN")); // default fallback
         response.put("permissions", permissionCodes);
-
+        response.put("profileImage", user.getProfileImage());
+        
         return response;
     }
 }
