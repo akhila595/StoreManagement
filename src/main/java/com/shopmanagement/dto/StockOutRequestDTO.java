@@ -9,7 +9,6 @@ public class StockOutRequestDTO {
     private int quantity;
     private LocalDateTime saleDate;
     private String remarks;
-    private BigDecimal sellingPrice; // per unit
     private BigDecimal finalPrice;   // after discount if any
     private Long customerId; // ✅ Added
 
@@ -25,9 +24,6 @@ public class StockOutRequestDTO {
 
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
-
-    public BigDecimal getSellingPrice() { return sellingPrice; }
-    public void setSellingPrice(BigDecimal sellingPrice) { this.sellingPrice = sellingPrice; }
 
     public BigDecimal getFinalPrice() { return finalPrice; }
     public void setFinalPrice(BigDecimal finalPrice) { this.finalPrice = finalPrice; }

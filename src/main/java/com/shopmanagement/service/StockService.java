@@ -38,28 +38,40 @@ public class StockService {
     @Autowired private JwtUtils jwtUtil;
 
     @Value("${app.upload.image-dir}")
-    private String uploadImageDir;
+    private String uploadImageDir; // base dir
 
     /** =========================
      *  SAVE IMAGE HELPER
      *  ========================= */
     private String saveImage(MultipartFile imageFile) {
         if (imageFile == null || imageFile.isEmpty()) return null;
+
         try {
             String ext = Optional.ofNullable(imageFile.getOriginalFilename())
                     .filter(f -> f.contains("."))
                     .map(f -> f.substring(f.lastIndexOf(".")))
                     .orElse("");
-            String uniqueFileName = UUID.randomUUID() + ext;
-            Path uploadPath = Paths.get(uploadImageDir);
-            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-            Path filePath = uploadPath.resolve(uniqueFileName);
+
+            String fileName = UUID.randomUUID() + ext;
+
+            // ✅ products folder
+            Path productImageDir = Paths.get(uploadImageDir, "products");
+
+            if (!Files.exists(productImageDir)) {
+                Files.createDirectories(productImageDir);
+            }
+
+            Path filePath = productImageDir.resolve(fileName);
             Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return "/images/" + uniqueFileName;
+
+            // ✅ public URL
+            return "/images/products/" + fileName;
+
         } catch (IOException e) {
-            throw new RuntimeException("❌ Failed to store image file", e);
+            throw new RuntimeException("Failed to store product image", e);
         }
     }
+
 
     /** =========================
      *  STOCK IN
@@ -186,12 +198,12 @@ public class StockService {
         invoice.setTotalAmount(dto.getFinalPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
         invoice.setCustomer(customer);
         saleInvoiceRepo.save(invoice);
-
+        BigDecimal sellingPrice = variant.getSellingPrice();
         SaleItem saleItem = new SaleItem();
         saleItem.setSaleInvoice(invoice);
         saleItem.setProductVariant(variant);
         saleItem.setQuantity(dto.getQuantity());
-        saleItem.setSellingPrice(dto.getSellingPrice());
+        saleItem.setSellingPrice(sellingPrice);
         saleItem.setFinalPrice(dto.getFinalPrice());
         saleItem.setThresholdPriceAtSale(lastPurchase.getThresholdPrice());
         saleItem.setCustomer(customer);

@@ -35,10 +35,10 @@ public class ProductService {
         dto.setDesignCode(p.getDesignCode());
         dto.setPattern(p.getPattern());
         dto.setImageUrl(
-                (p.getImageUrl() != null && !p.getImageUrl().isEmpty())
-                        ? p.getImageUrl()
-                        : "/uploads/products/no-image.png"
-        );
+        	    (p.getImageUrl() != null && !p.getImageUrl().isEmpty())
+        	        ? p.getImageUrl()
+        	        : "/images/products/no-image.png"
+        	);
 
         if (p.getBrand() != null) {
             dto.setBrandId(p.getBrand().getId());
