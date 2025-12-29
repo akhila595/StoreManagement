@@ -18,17 +18,21 @@ public class ImageUploadDirectoryInitializer {
     @PostConstruct
     public void init() {
         try {
-            Path path = Paths.get(uploadDir);
-            if (!Files.exists(path)) {
-                Files.createDirectories(path);
-                System.out.println("✅ Created upload directory: " + path.toAbsolutePath());
-            } else {
-                System.out.println("✅ Upload directory already exists: " + path.toAbsolutePath());
-            }
+            Path baseDir = Paths.get(uploadDir);
+            Path usersDir = baseDir.resolve("users");
+            Path productsDir = baseDir.resolve("products");
+
+            Files.createDirectories(baseDir);
+            Files.createDirectories(usersDir);
+            Files.createDirectories(productsDir);
+
+            System.out.println("✅ Upload directories ready:");
+            System.out.println("   Base     : " + baseDir.toAbsolutePath());
+            System.out.println("   Users    : " + usersDir.toAbsolutePath());
+            System.out.println("   Products : " + productsDir.toAbsolutePath());
+
         } catch (IOException e) {
-            throw new RuntimeException("❌ Failed to create upload directory", e);
+            throw new RuntimeException("❌ Failed to create upload directories", e);
         }
     }
-    //
 }
-
