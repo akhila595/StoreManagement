@@ -9,31 +9,31 @@ import lombok.NoArgsConstructor;
  * Used for sending and receiving product data across API.
  */
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class ProductDTO {
 
     // --- Product fields ---
-    private Long id;              // Product ID
-    private String productName;   // Product name
-    private String designCode;    // Unique design code
-    private String pattern;       // Product pattern
-    private String imageUrl;      // Image URL (optional)
+    private Long id;
+    private String productName;
+    private String designCode;
+    private String pattern;
+    private String imageUrl;
 
     // --- Brand fields ---
-    private Long brandId;         // Related Brand ID
-    private String brandName;     // Read-only Brand name
+    private Long brandId;
+    private String brandName;
 
     // --- ClothType fields ---
-    private Long clothTypeId;     // Related ClothType ID
-    private String clothTypeName; // Read-only ClothType name
+    private Long clothTypeId;
+    private String clothTypeName;
 
     // --- Category fields ---
-    private Long categoryId;      // Related Category ID
-    private String categoryName;  // Read-only Category name
+    private Long categoryId;
+    private String categoryName;
 
     // --- Customer field ---
-    private Long customerId;      // ✅ Added for multi-customer reference
+    private Long customerId;
 
 	public Long getId() {
 		return id;
