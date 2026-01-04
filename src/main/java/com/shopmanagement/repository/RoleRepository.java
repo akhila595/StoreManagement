@@ -1,5 +1,6 @@
 package com.shopmanagement.repository;
 
+import com.shopmanagement.model.Customer;
 import com.shopmanagement.model.Role;
 import com.shopmanagement.model.User;
 
@@ -13,5 +14,5 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
     Optional<Role> findByIdAndCustomer_Id(Long id, Long customerId);
     List<Role> findByCustomer_Id(Long customerId);
 	Optional<Role> findByNameAndCustomerIsNull(String name);
-	
+	boolean existsByNameAndCustomer(String name, Customer customer);
 }
