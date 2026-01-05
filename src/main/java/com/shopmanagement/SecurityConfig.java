@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -30,14 +31,18 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ PUBLIC ENDPOINTS
-                        .requestMatchers( 
+
+                        // 🔥 REQUIRED FOR CORS PREFLIGHT
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // ✅ PUBLIC ENDPOINTS (NO TOKEN REQUIRED)
+                        .requestMatchers(
                                 "/api/auth/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/public/**",
                                 "/",
-                                "/images/**"   // 🔥 VERY IMPORTANT
+                                "/images/**"
                         ).permitAll()
 
                         // 🔒 Everything else secured
