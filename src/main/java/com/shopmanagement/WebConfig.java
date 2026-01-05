@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -32,25 +31,7 @@ public class WebConfig implements WebMvcConfigurer {
     private String frontendUrl;
 
     // ===============================
-    // CORS CONFIGURATION (MVC)
-    // ===============================
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins(frontendUrl)
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders(
-                        "Authorization",
-                        "Content-Type",
-                        "X-Is-SuperAdmin",
-                        "X-Customer-Id"
-                )
-                .exposedHeaders("Authorization")
-                .allowCredentials(true);
-    }
-
-    // ===============================
-    // 🔥 CORS FOR SPRING SECURITY
+    // 🔥 CORS FOR SPRING SECURITY (ONLY PLACE)
     // ===============================
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
