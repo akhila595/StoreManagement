@@ -1,9 +1,15 @@
 package com.shopmanagement.model;
 
+import java.time.LocalDateTime;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product")
+@Table(
+    name = "products",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"code", "customer_id"})
+    }
+)
 public class Product {
 
     @Id
@@ -11,29 +17,17 @@ public class Product {
     @Column(name = "product_id")
     private Long productId;
 
-    @Column(name = "design_code")
-    private String designCode;
-
-    @Column(name = "pattern")
-    private String pattern;
-
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private Brand brand;
 
-  
-	@ManyToOne
-    @JoinColumn(name = "cloth_type_id")
-    private ClothType clothType;
+    @Column(nullable = false)
+    private String name;
 
-
-    @Column(name = "product_name")
-    private String productName;
-
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
-    
+
     @Column(name = "image_url")
     private String imageUrl;
 
@@ -41,17 +35,20 @@ public class Product {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    public String getImageUrl() {
-		return imageUrl;
-	}
+    @Column(nullable = false)
+    private String code;
 
-	public void setImageUrl(String imageUrl) {
-		this.imageUrl = imageUrl;
-	}
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-	public Product() {}
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
-    // --- getters & setters ---
+    public Product() {}
+
+    // Getters & Setters
 
     public Long getProductId() {
         return productId;
@@ -59,22 +56,6 @@ public class Product {
 
     public void setProductId(Long productId) {
         this.productId = productId;
-    }
-
-    public String getDesignCode() {
-        return designCode;
-    }
-
-    public void setDesignCode(String designCode) {
-        this.designCode = designCode;
-    }
-
-    public String getPattern() {
-        return pattern;
-    }
-
-    public void setPattern(String pattern) {
-        this.pattern = pattern;
     }
 
     public Brand getBrand() {
@@ -85,12 +66,12 @@ public class Product {
         this.brand = brand;
     }
 
-    public String getProductName() {
-        return productName;
+    public String getName() {
+        return name;
     }
 
-    public void setProductName(String productName) {
-        this.productName = productName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Category getCategory() {
@@ -100,20 +81,32 @@ public class Product {
     public void setCategory(Category category) {
         this.category = category;
     }
-    public ClothType getClothType() {
-  		return clothType;
-  	}
 
-  	public void setClothType(ClothType clothType) {
-  		this.clothType = clothType;
-  	}
+    public String getImageUrl() {
+        return imageUrl;
+    }
 
-	public Customer getCustomer() {
-		return customer;
-	}
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
 
-	public void setCustomer(Customer customer) {
-		this.customer = customer;
-	}
+    public Customer getCustomer() {
+        return customer;
+    }
 
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code != null ? code.toUpperCase() : null;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 }
