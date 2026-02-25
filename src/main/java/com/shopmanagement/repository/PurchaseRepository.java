@@ -21,5 +21,8 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
     Optional<Purchase> findTopByProductVariantAndCustomer_IdOrderByPurchaseDateDesc(ProductVariant variant, Long customerId);
     List<Purchase> findTop10ByCustomer_IdOrderByPurchaseDateDesc(Long customerId);
     List<Purchase> findByPurchaseDateBetweenAndCustomer_Id(LocalDate start, LocalDate end, Long customerId);
+	Optional<Purchase> findByIdAndCustomer_IdAndStatus(Long purchaseId, Long customerId, String string);
+	List<Purchase> findByPurchaseDateBetweenAndCustomer_IdAndStatus(LocalDate startDate, LocalDate endDate,
+			Long customerId, String string);
 
 }

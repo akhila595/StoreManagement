@@ -9,4 +9,6 @@ public interface VariantAttributeRepository extends JpaRepository<VariantAttribu
     List<VariantAttribute> findByVariant_IdAndCustomer_Id(Long variantId, Long customerId);
 
     List<VariantAttribute> findByAttributeValue_IdAndCustomer_Id(Long attributeValueId, Long customerId);
+
+	List<VariantAttribute> findByVariant_VariantIdAndCustomer_Id(Long variantId, Long customerId);
 }

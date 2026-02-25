@@ -2,6 +2,7 @@ package com.shopmanagement.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import jakarta.persistence.*;
 
 @Entity
@@ -15,9 +16,14 @@ public class Purchase {
     private Integer quantity;
 
     @Column(nullable = false)
-    private BigDecimal thresholdPrice; // final unit cost
+    private BigDecimal thresholdPrice;
 
     private LocalDate purchaseDate;
+
+    @Column(nullable = false)
+    private String status = "ACTIVE";
+
+    private LocalDateTime deletedAt;
 
     @ManyToOne
     @JoinColumn(name = "variant_id")
@@ -30,7 +36,13 @@ public class Purchase {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
-    
+
+    /* ========== Soft Delete Method ========== */
+    public void markDeleted() {
+        this.status = "DELETED";
+        this.deletedAt = LocalDateTime.now();
+    }
+
 	public Long getPurchaseId() {
 		return purchaseId;
 	}
@@ -63,6 +75,22 @@ public class Purchase {
 		this.purchaseDate = purchaseDate;
 	}
 
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
+
+	public void setDeletedAt(LocalDateTime deletedAt) {
+		this.deletedAt = deletedAt;
+	}
+
 	public ProductVariant getProductVariant() {
 		return productVariant;
 	}
@@ -86,4 +114,6 @@ public class Purchase {
 	public void setCustomer(Customer customer) {
 		this.customer = customer;
 	}
+
+  
 }

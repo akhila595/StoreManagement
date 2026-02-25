@@ -10,4 +10,5 @@ import com.shopmanagement.model.StockMovement;
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 	 List<StockMovement> findTop10ByMovementTypeOrderByMovementDateDesc(String movementType);
 	 List<StockMovement> findTop10ByMovementTypeAndCustomer_IdOrderByMovementDateDesc(String type, Long customerId);
+	List<StockMovement> findByPurchase_PurchaseIdAndCustomer_Id(Long purchaseId, Long customerId);
 }

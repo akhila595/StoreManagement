@@ -13,4 +13,6 @@ public interface AttributeValueRepository extends JpaRepository<AttributeValue, 
 
     Optional<AttributeValue> findByValueAndAttribute_IdAndCustomer_Id(
             String value, Long attributeId, Long customerId);
+
+	List<AttributeValue> findByIdInAndCustomer_Id(List<Long> attributeValueIds, Long customerId);
 }

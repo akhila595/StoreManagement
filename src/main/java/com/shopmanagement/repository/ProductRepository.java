@@ -10,15 +10,26 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    // Fetch all products of logged-in customer
-    List<Product> findByCustomer_Id(Long customerId);
+    /* ================= BASIC FETCH ================= */
 
-    // Secure fetch by ID
+    // Fetch all products for logged-in customer
+    List<Product> findByCustomer_IdAndStatus(String status, Long customerId);
+
+    // Fetch by ID (secure multi-tenant)
     Optional<Product> findByIdAndCustomer_Id(Long productId, Long customerId);
+
+    /* ================= UNIQUE VALIDATIONS ================= */
 
     // Prevent duplicate product code per customer
     Optional<Product> findByCodeAndCustomer_Id(String code, Long customerId);
 
-    // Optional: prevent duplicate name per customer
+    boolean existsByCodeAndCustomer_Id(String code, Long customerId);
+
+    // Optional: prevent duplicate product name per customer
     Optional<Product> findByNameAndCustomer_Id(String name, Long customerId);
+
+    boolean existsByNameAndCustomer_Id(String name, Long customerId);
+
+	Optional findByCustomer_Id(Long customerId);
+
 }
