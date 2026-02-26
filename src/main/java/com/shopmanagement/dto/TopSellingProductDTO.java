@@ -4,52 +4,86 @@ public class TopSellingProductDTO {
 
     private String productName;
     private String brandName;
-    private String pattern;
-    private String clothType;
-    private String color;
-    private String size;
+    private String sku;
+    private String attributes;   // Dynamic attribute summary (Red / XL / Cotton etc.)
     private Integer quantitySold;
     private String imageUrl;
-    private Long customerId; // ✅ Added for tenant context
+    private Long customerId;
 
-    public TopSellingProductDTO(String productName, String brandName, String pattern, String clothType,
-                                String color, String size, Integer quantitySold, String imageUrl, Long customerId) {
+    public TopSellingProductDTO() {}
+
+    public TopSellingProductDTO(String productName,
+                                String brandName,
+                                String sku,
+                                String attributes,
+                                Integer quantitySold,
+                                String imageUrl,
+                                Long customerId) {
+
         this.productName = productName;
         this.brandName = brandName;
-        this.pattern = pattern;
-        this.clothType = clothType;
-        this.color = color;
-        this.size = size;
+        this.sku = sku;
+        this.attributes = attributes;
         this.quantitySold = quantitySold;
         this.imageUrl = imageUrl;
         this.customerId = customerId;
     }
 
     // Getters & Setters
-    public String getProductName() { return productName; }
-    public void setProductName(String productName) { this.productName = productName; }
 
-    public String getBrandName() { return brandName; }
-    public void setBrandName(String brandName) { this.brandName = brandName; }
+    public String getProductName() {
+        return productName;
+    }
 
-    public String getPattern() { return pattern; }
-    public void setPattern(String pattern) { this.pattern = pattern; }
+    public String getBrandName() {
+        return brandName;
+    }
 
-    public String getClothType() { return clothType; }
-    public void setClothType(String clothType) { this.clothType = clothType; }
+    public String getSku() {
+        return sku;
+    }
 
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
+    public String getAttributes() {
+        return attributes;
+    }
 
-    public String getSize() { return size; }
-    public void setSize(String size) { this.size = size; }
+    public Integer getQuantitySold() {
+        return quantitySold;
+    }
 
-    public Integer getQuantitySold() { return quantitySold; }
-    public void setQuantitySold(Integer quantitySold) { this.quantitySold = quantitySold; }
+    public String getImageUrl() {
+        return imageUrl;
+    }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public Long getCustomerId() {
+        return customerId;
+    }
 
-    public Long getCustomerId() { return customerId; }
-    public void setCustomerId(Long customerId) { this.customerId = customerId; }
+    public void setProductName(String productName) {
+        this.productName = productName;
+    }
+
+    public void setBrandName(String brandName) {
+        this.brandName = brandName;
+    }
+
+    public void setSku(String sku) {
+        this.sku = sku;
+    }
+
+    public void setAttributes(String attributes) {
+        this.attributes = attributes;
+    }
+
+    public void setQuantitySold(Integer quantitySold) {
+        this.quantitySold = quantitySold;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
+    }
 }

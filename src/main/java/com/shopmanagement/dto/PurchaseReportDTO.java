@@ -11,6 +11,7 @@ public class PurchaseReportDTO {
     private BigDecimal thresholdPrice;
     private LocalDate purchaseDate;
     private Long customerId; // ✅ Added for multi-customer link
+    private String sku;
 
     // Getters & Setters
     public String getSupplierName() { return supplierName; }
@@ -30,4 +31,10 @@ public class PurchaseReportDTO {
 
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
+	public String getSku() {
+		return sku;
+	}
+	public void setSku(String sku) {
+		this.sku = sku;
+	}
 }

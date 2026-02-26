@@ -54,7 +54,6 @@ public class ReportService {
 
         DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
         report.setMonth(month);
-
         return report;
     }
 
@@ -80,9 +79,11 @@ public class ReportService {
 
         for (SaleItem sale : sales) {
 
-            if (sale.getProductVariant() == null) continue;
-
             ProductVariant variant = sale.getProductVariant();
+            if (variant == null) continue;
+
+            Product product = variant.getProduct();
+            if (product == null || "DELETED".equals(product.getStatus())) continue;
 
             variantQtyMap.put(
                     variant,
@@ -102,14 +103,14 @@ public class ReportService {
                             getVariantAttributeSummary(variant, customerId);
 
                     return new TopSellingProductDTO(
-                            product != null ? product.getName() : "Unknown",
-                            product != null && product.getBrand() != null
+                            product.getName(),
+                            product.getBrand() != null
                                     ? product.getBrand().getBrand()
                                     : "-",
                             variant.getProductSku(),
                             attributeSummary,
                             entry.getValue(),
-                            product != null ? product.getImageUrl() : null,
+                            product.getImageUrl(),
                             customerId
                     );
                 })
@@ -124,30 +125,29 @@ public class ReportService {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        List<ProductVariant> lowStockVariants =
+        List<ProductVariant> variants =
                 variantRepo.findByStockQtyLessThanAndCustomer_Id(
                         threshold, customerId);
 
-        List<LowStockProductDTO> dtoList = new ArrayList<>();
+        List<LowStockProductDTO> result = new ArrayList<>();
 
-        for (ProductVariant variant : lowStockVariants) {
+        for (ProductVariant variant : variants) {
 
-            if (variant.getProduct() == null) continue;
+            if (variant == null) continue;
 
-            String attributeSummary =
-                    getVariantAttributeSummary(variant, customerId);
+            Product product = variant.getProduct();
+            if (product == null || "DELETED".equals(product.getStatus())) continue;
 
             LowStockProductDTO dto = new LowStockProductDTO();
-            dto.setProductName(variant.getProduct().getName());
+            dto.setProductName(product.getName());
             dto.setSku(variant.getProductSku());
             dto.setStockQty(variant.getStockQty());
-            dto.setAttributes(attributeSummary);
             dto.setCustomerId(customerId);
 
-            dtoList.add(dto);
+            result.add(dto);
         }
 
-        return dtoList;
+        return result;
     }
 
     /* ==========================================================
@@ -171,22 +171,22 @@ public class ReportService {
 
         for (SaleItem sale : sales) {
 
-            if (sale.getProductVariant() == null ||
-                sale.getProductVariant().getProduct() == null ||
-                sale.getProductVariant().getProduct().getCategory() == null)
+            ProductVariant variant = sale.getProductVariant();
+            if (variant == null) continue;
+
+            Product product = variant.getProduct();
+            if (product == null ||
+                "DELETED".equals(product.getStatus()) ||
+                product.getCategory() == null)
                 continue;
 
             String categoryName =
-                    sale.getProductVariant()
-                        .getProduct()
-                        .getCategory()
-                        .getCategoryName();
+                    product.getCategory().getCategoryName();
 
-            CategoryReportDTO categoryReport =
+            CategoryReportDTO report =
                     categoryMap.getOrDefault(
                             categoryName,
-                            new CategoryReportDTO(categoryName)
-                    );
+                            new CategoryReportDTO(categoryName));
 
             BigDecimal saleTotal =
                     sale.getFinalPrice()
@@ -199,9 +199,8 @@ public class ReportService {
             BigDecimal costTotal =
                     threshold.multiply(BigDecimal.valueOf(sale.getQuantity()));
 
-            categoryReport.addSale(saleTotal, costTotal);
-
-            categoryMap.put(categoryName, categoryReport);
+            report.addSale(saleTotal, costTotal);
+            categoryMap.put(categoryName, report);
         }
 
         return new ArrayList<>(categoryMap.values());
@@ -224,34 +223,32 @@ public class ReportService {
                         customerId,
                         "ACTIVE");
 
-        List<PurchaseReportDTO> reportList = new ArrayList<>();
+        List<PurchaseReportDTO> result = new ArrayList<>();
 
         for (Purchase p : purchases) {
 
             if (p.getProductVariant() == null) continue;
 
-            PurchaseReportDTO dto = new PurchaseReportDTO();
+            Product product = p.getProductVariant().getProduct();
+            if (product == null || "DELETED".equals(product.getStatus())) continue;
 
+            PurchaseReportDTO dto = new PurchaseReportDTO();
             dto.setSupplierName(
                     p.getSupplier() != null
                             ? p.getSupplier().getSupplierName()
                             : "Unknown");
 
-            dto.setProductName(
-                    p.getProductVariant().getProduct() != null
-                            ? p.getProductVariant().getProduct().getName()
-                            : "Unknown");
-
+            dto.setProductName(product.getName());
             dto.setSku(p.getProductVariant().getProductSku());
             dto.setQuantity(p.getQuantity());
             dto.setThresholdPrice(p.getThresholdPrice());
             dto.setPurchaseDate(p.getPurchaseDate());
             dto.setCustomerId(customerId);
 
-            reportList.add(dto);
+            result.add(dto);
         }
 
-        return reportList;
+        return result;
     }
 
     /* ==========================================================
@@ -266,13 +263,17 @@ public class ReportService {
         BigDecimal totalSales = BigDecimal.ZERO;
         BigDecimal totalProfit = BigDecimal.ZERO;
         BigDecimal totalLoss = BigDecimal.ZERO;
-        int totalQuantitySold = 0;
+        int totalQty = 0;
 
         List<ProductSaleReportDTO> productReports = new ArrayList<>();
 
         for (SaleItem sale : sales) {
 
-            if (sale.getProductVariant() == null) continue;
+            ProductVariant variant = sale.getProductVariant();
+            if (variant == null) continue;
+
+            Product product = variant.getProduct();
+            if (product == null || "DELETED".equals(product.getStatus())) continue;
 
             BigDecimal saleTotal =
                     sale.getFinalPrice()
@@ -299,39 +300,25 @@ public class ReportService {
             }
 
             totalSales = totalSales.add(saleTotal);
-            totalQuantitySold += sale.getQuantity();
+            totalQty += sale.getQuantity();
 
-            ProductVariant variant = sale.getProductVariant();
+            ProductSaleReportDTO dto = new ProductSaleReportDTO();
+            dto.setProductName(product.getName());
+            dto.setSku(variant.getProductSku());
+            dto.setQuantity(sale.getQuantity());
+            dto.setSaleTotal(saleTotal);
+            dto.setCostTotal(costTotal);
+            dto.setProfit(profit);
+            dto.setLoss(loss);
+            dto.setCustomerId(customerId);
 
-            String attributeSummary =
-                    getVariantAttributeSummary(variant, customerId);
-
-            ProductSaleReportDTO productReport =
-                    new ProductSaleReportDTO();
-
-            productReport.setProductName(
-                    variant.getProduct() != null
-                            ? variant.getProduct().getName()
-                            : "Unknown");
-
-            productReport.setSku(variant.getProductSku());
-            productReport.setAttributes(attributeSummary);
-            productReport.setQuantity(sale.getQuantity());
-            productReport.setSaleTotal(saleTotal);
-            productReport.setCostTotal(costTotal);
-            productReport.setProfit(profit);
-            productReport.setLoss(loss);
-            productReport.setCustomerId(customerId);
-
-            productReports.add(productReport);
+            productReports.add(dto);
         }
 
-        DetailedDailyReportDTO report =
-                new DetailedDailyReportDTO();
-
+        DetailedDailyReportDTO report = new DetailedDailyReportDTO();
         report.setDate(date);
         report.setCustomerId(customerId);
-        report.setTotalQuantitySold(totalQuantitySold);
+        report.setTotalQuantitySold(totalQty);
         report.setProductSales(productReports);
         report.setTotalSales(totalSales);
         report.setTotalProfit(totalProfit);
