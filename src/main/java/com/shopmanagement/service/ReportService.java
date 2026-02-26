@@ -16,191 +16,253 @@ import com.shopmanagement.repository.*;
 @Service
 public class ReportService {
 
-    @Autowired
-    private SaleItemRepository saleItemRepo;
+    @Autowired private SaleItemRepository saleItemRepo;
+    @Autowired private PurchaseRepository purchaseRepo;
+    @Autowired private ProductVariantRepository variantRepo;
+    @Autowired private VariantAttributeRepository variantAttributeRepo;
+    @Autowired private JwtUtils jwtUtils;
 
-    @Autowired
-    private PurchaseRepository purchaseRepo;
+    /* ==========================================================
+       ===================== DAILY REPORT =======================
+       ========================================================== */
 
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private ProductVariantRepository productVariantRepository;
-
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    // ==========================================================
-    // DAILY REPORT
-    // ==========================================================
     public DetailedDailyReportDTO getDailyReport(LocalDate date) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateAndCustomer_Id(date, customerId);
+        List<SaleItem> sales =
+                saleItemRepo.findBySaleInvoice_SaleDateAndCustomer_IdAndStatus(
+                        date, customerId, "ACTIVE");
 
         return calculateReport(sales, date, customerId);
     }
 
-    // ==========================================================
-    // MONTHLY REPORT
-    // ==========================================================
+    /* ==========================================================
+       ===================== MONTHLY REPORT =====================
+       ========================================================== */
+
     public DetailedDailyReportDTO getMonthlyReport(YearMonth month) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(
-                month.atDay(1), month.atEndOfMonth(), customerId);
+        List<SaleItem> sales =
+                saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(
+                        month.atDay(1),
+                        month.atEndOfMonth(),
+                        customerId,
+                        "ACTIVE");
 
         DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
         report.setMonth(month);
+
         return report;
     }
 
-    // ==========================================================
-    // WEEKLY REPORT
-    // ==========================================================
-    public DetailedDailyReportDTO getWeeklyReport(LocalDate startDate, LocalDate endDate) {
+    /* ==========================================================
+       ===================== TOP SELLING PRODUCTS ===============
+       ========================================================== */
+
+    public List<TopSellingProductDTO> getTopSellingProducts(
+            LocalDate startDate,
+            LocalDate endDate,
+            int limit) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(startDate, endDate, customerId);
-
-        DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
-        report.setStartDate(startDate);
-        report.setEndDate(endDate);
-        return report;
-    }
-
-    // ==========================================================
-    // YEARLY REPORT
-    // ==========================================================
-    public DetailedDailyReportDTO getYearlyReport(int year) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
-
-        LocalDate start = LocalDate.of(year, 1, 1);
-        LocalDate end = LocalDate.of(year, 12, 31);
-
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(start, end, customerId);
-
-        DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
-        report.setYear(year);
-        return report;
-    }
-
-    // ==========================================================
-    // CATEGORY-WISE PROFIT/LOSS
-    // ==========================================================
-    public List<CategoryReportDTO> getCategoryWiseReport(LocalDate startDate, LocalDate endDate) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
-
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(startDate, endDate, customerId);
-
-        Map<String, CategoryReportDTO> categoryMap = new HashMap<>();
-
-        for (SaleItem sale : sales) {
-            String categoryName = sale.getProductVariant().getProduct().getCategory().getCategoryName();
-            CategoryReportDTO categoryReport = categoryMap
-                    .getOrDefault(categoryName, new CategoryReportDTO(categoryName));
-
-            BigDecimal saleTotal = sale.getFinalPrice().multiply(BigDecimal.valueOf(sale.getQuantity()));
-            BigDecimal costTotal = sale.getThresholdPriceAtSale().multiply(BigDecimal.valueOf(sale.getQuantity()));
-
-            categoryReport.addSale(saleTotal, costTotal);
-            categoryMap.put(categoryName, categoryReport);
-        }
-
-        return new ArrayList<>(categoryMap.values());
-    }
-
-    // ==========================================================
-    // SUPPLIER PURCHASE HISTORY
-    // ==========================================================
-    public List<PurchaseReportDTO> getSupplierPurchaseHistory(Long supplierId, LocalDate startDate, LocalDate endDate) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
-
-        List<Purchase> purchases = purchaseRepo.findBySupplier_SupplierIdAndPurchaseDateBetweenAndCustomer_Id(
-                supplierId, startDate, endDate, customerId);
-
-        List<PurchaseReportDTO> reportList = new ArrayList<>();
-
-        for (Purchase p : purchases) {
-            PurchaseReportDTO dto = new PurchaseReportDTO();
-            dto.setSupplierName(p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown");
-            dto.setPurchaseDate(p.getPurchaseDate());
-            dto.setProductName(p.getProductVariant() != null
-                    ? p.getProductVariant().getProduct().getProductName()
-                    : "Unknown");
-            dto.setQuantity(p.getQuantity());
-            dto.setThresholdPrice(p.getThresholdPrice());
-            dto.setCustomerId(customerId);
-            reportList.add(dto);
-        }
-
-        return reportList;
-    }
-
-    // ==========================================================
-    // TOP-SELLING PRODUCTS
-    // ==========================================================
-    public List<TopSellingProductDTO> getTopSellingProducts(LocalDate startDate, LocalDate endDate, int limit) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
-
-        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_Id(startDate, endDate, customerId);
+        List<SaleItem> sales =
+                saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(
+                        startDate,
+                        endDate,
+                        customerId,
+                        "ACTIVE");
 
         Map<ProductVariant, Integer> variantQtyMap = new HashMap<>();
+
         for (SaleItem sale : sales) {
+
+            if (sale.getProductVariant() == null) continue;
+
             ProductVariant variant = sale.getProductVariant();
-            variantQtyMap.put(variant, variantQtyMap.getOrDefault(variant, 0) + sale.getQuantity());
+
+            variantQtyMap.put(
+                    variant,
+                    variantQtyMap.getOrDefault(variant, 0) + sale.getQuantity()
+            );
         }
 
         return variantQtyMap.entrySet().stream()
                 .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
                 .limit(limit)
-                .map(e -> {
-                    ProductVariant v = e.getKey();
-                    Product p = v.getProduct();
+                .map(entry -> {
+
+                    ProductVariant variant = entry.getKey();
+                    Product product = variant.getProduct();
+
+                    String attributeSummary =
+                            getVariantAttributeSummary(variant, customerId);
 
                     return new TopSellingProductDTO(
-                            p.getProductName(),
-                            p.getBrand() != null ? p.getBrand().getBrand() : "-",
-                            p.getPattern() != null ? p.getPattern() : "-",
-                            p.getClothType() != null ? p.getClothType().getClothType() : "-",
-                            v.getColor() != null ? v.getColor().getColor() : "-",
-                            v.getSize() != null ? v.getSize().getSize() : "-",
-                            e.getValue(),
-                            p.getImageUrl(),
+                            product != null ? product.getName() : "Unknown",
+                            product != null && product.getBrand() != null
+                                    ? product.getBrand().getBrand()
+                                    : "-",
+                            variant.getProductSku(),
+                            attributeSummary,
+                            entry.getValue(),
+                            product != null ? product.getImageUrl() : null,
                             customerId
                     );
                 })
                 .collect(Collectors.toList());
     }
 
-    // ==========================================================
-    // LOW STOCK PRODUCTS
-    // ==========================================================
-    public List<LowStockProductDTO> getLowStockProducts() {
+    /* ==========================================================
+       ===================== LOW STOCK PRODUCTS =================
+       ========================================================== */
+
+    public List<LowStockProductDTO> getLowStockProducts(int threshold) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        int lowStockThreshold = 10;
         List<ProductVariant> lowStockVariants =
-                productVariantRepository.findByStockQtyLessThanAndCustomer_Id(lowStockThreshold, customerId);
+                variantRepo.findByStockQtyLessThanAndCustomer_Id(
+                        threshold, customerId);
 
         List<LowStockProductDTO> dtoList = new ArrayList<>();
+
         for (ProductVariant variant : lowStockVariants) {
+
+            if (variant.getProduct() == null) continue;
+
+            String attributeSummary =
+                    getVariantAttributeSummary(variant, customerId);
+
             LowStockProductDTO dto = new LowStockProductDTO();
-            dto.setProductName(variant.getProduct().getProductName());
+            dto.setProductName(variant.getProduct().getName());
             dto.setSku(variant.getProductSku());
             dto.setStockQty(variant.getStockQty());
+            dto.setAttributes(attributeSummary);
             dto.setCustomerId(customerId);
+
             dtoList.add(dto);
         }
 
         return dtoList;
     }
 
-    // ==========================================================
-    // COMMON REPORT CALCULATION
-    // ==========================================================
-    private DetailedDailyReportDTO calculateReport(List<SaleItem> sales, LocalDate date, Long customerId) {
+    /* ==========================================================
+       ===================== CATEGORY REPORT ====================
+       ========================================================== */
+
+    public List<CategoryReportDTO> getCategoryWiseReport(
+            LocalDate startDate,
+            LocalDate endDate) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<SaleItem> sales =
+                saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(
+                        startDate,
+                        endDate,
+                        customerId,
+                        "ACTIVE");
+
+        Map<String, CategoryReportDTO> categoryMap = new HashMap<>();
+
+        for (SaleItem sale : sales) {
+
+            if (sale.getProductVariant() == null ||
+                sale.getProductVariant().getProduct() == null ||
+                sale.getProductVariant().getProduct().getCategory() == null)
+                continue;
+
+            String categoryName =
+                    sale.getProductVariant()
+                        .getProduct()
+                        .getCategory()
+                        .getCategoryName();
+
+            CategoryReportDTO categoryReport =
+                    categoryMap.getOrDefault(
+                            categoryName,
+                            new CategoryReportDTO(categoryName)
+                    );
+
+            BigDecimal saleTotal =
+                    sale.getFinalPrice()
+                        .multiply(BigDecimal.valueOf(sale.getQuantity()));
+
+            BigDecimal threshold =
+                    Optional.ofNullable(sale.getThresholdPriceAtSale())
+                            .orElse(BigDecimal.ZERO);
+
+            BigDecimal costTotal =
+                    threshold.multiply(BigDecimal.valueOf(sale.getQuantity()));
+
+            categoryReport.addSale(saleTotal, costTotal);
+
+            categoryMap.put(categoryName, categoryReport);
+        }
+
+        return new ArrayList<>(categoryMap.values());
+    }
+
+    /* ==========================================================
+       ===================== PURCHASE REPORT ====================
+       ========================================================== */
+
+    public List<PurchaseReportDTO> getPurchaseReport(
+            LocalDate startDate,
+            LocalDate endDate) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<Purchase> purchases =
+                purchaseRepo.findByPurchaseDateBetweenAndCustomer_IdAndStatus(
+                        startDate,
+                        endDate,
+                        customerId,
+                        "ACTIVE");
+
+        List<PurchaseReportDTO> reportList = new ArrayList<>();
+
+        for (Purchase p : purchases) {
+
+            if (p.getProductVariant() == null) continue;
+
+            PurchaseReportDTO dto = new PurchaseReportDTO();
+
+            dto.setSupplierName(
+                    p.getSupplier() != null
+                            ? p.getSupplier().getSupplierName()
+                            : "Unknown");
+
+            dto.setProductName(
+                    p.getProductVariant().getProduct() != null
+                            ? p.getProductVariant().getProduct().getName()
+                            : "Unknown");
+
+            dto.setSku(p.getProductVariant().getProductSku());
+            dto.setQuantity(p.getQuantity());
+            dto.setThresholdPrice(p.getThresholdPrice());
+            dto.setPurchaseDate(p.getPurchaseDate());
+            dto.setCustomerId(customerId);
+
+            reportList.add(dto);
+        }
+
+        return reportList;
+    }
+
+    /* ==========================================================
+       ===================== COMMON REPORT LOGIC =================
+       ========================================================== */
+
+    private DetailedDailyReportDTO calculateReport(
+            List<SaleItem> sales,
+            LocalDate date,
+            Long customerId) {
+
         BigDecimal totalSales = BigDecimal.ZERO;
         BigDecimal totalProfit = BigDecimal.ZERO;
         BigDecimal totalLoss = BigDecimal.ZERO;
@@ -209,8 +271,20 @@ public class ReportService {
         List<ProductSaleReportDTO> productReports = new ArrayList<>();
 
         for (SaleItem sale : sales) {
-            BigDecimal saleTotal = sale.getFinalPrice().multiply(BigDecimal.valueOf(sale.getQuantity()));
-            BigDecimal costTotal = sale.getThresholdPriceAtSale().multiply(BigDecimal.valueOf(sale.getQuantity()));
+
+            if (sale.getProductVariant() == null) continue;
+
+            BigDecimal saleTotal =
+                    sale.getFinalPrice()
+                        .multiply(BigDecimal.valueOf(sale.getQuantity()));
+
+            BigDecimal threshold =
+                    Optional.ofNullable(sale.getThresholdPriceAtSale())
+                            .orElse(BigDecimal.ZERO);
+
+            BigDecimal costTotal =
+                    threshold.multiply(BigDecimal.valueOf(sale.getQuantity()));
+
             BigDecimal diff = saleTotal.subtract(costTotal);
 
             BigDecimal profit = BigDecimal.ZERO;
@@ -227,9 +301,21 @@ public class ReportService {
             totalSales = totalSales.add(saleTotal);
             totalQuantitySold += sale.getQuantity();
 
-            ProductSaleReportDTO productReport = new ProductSaleReportDTO();
-            productReport.setProductName(sale.getProductVariant().getProduct().getProductName());
-            productReport.setSku(sale.getProductVariant().getProductSku());
+            ProductVariant variant = sale.getProductVariant();
+
+            String attributeSummary =
+                    getVariantAttributeSummary(variant, customerId);
+
+            ProductSaleReportDTO productReport =
+                    new ProductSaleReportDTO();
+
+            productReport.setProductName(
+                    variant.getProduct() != null
+                            ? variant.getProduct().getName()
+                            : "Unknown");
+
+            productReport.setSku(variant.getProductSku());
+            productReport.setAttributes(attributeSummary);
             productReport.setQuantity(sale.getQuantity());
             productReport.setSaleTotal(saleTotal);
             productReport.setCostTotal(costTotal);
@@ -240,7 +326,9 @@ public class ReportService {
             productReports.add(productReport);
         }
 
-        DetailedDailyReportDTO report = new DetailedDailyReportDTO();
+        DetailedDailyReportDTO report =
+                new DetailedDailyReportDTO();
+
         report.setDate(date);
         report.setCustomerId(customerId);
         report.setTotalQuantitySold(totalQuantitySold);
@@ -252,29 +340,29 @@ public class ReportService {
         return report;
     }
 
-    // ==========================================================
-    // SUPPLIER PURCHASE SUMMARY (All Suppliers)
-    // ==========================================================
-    public List<PurchaseReportDTO> getAllSuppliersPurchaseReport(LocalDate startDate, LocalDate endDate) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+    /* ==========================================================
+       ===================== ATTRIBUTE SUMMARY ==================
+       ========================================================== */
 
-        List<Purchase> purchases = purchaseRepo.findByPurchaseDateBetweenAndCustomer_Id(startDate, endDate, customerId);
+    private String getVariantAttributeSummary(
+            ProductVariant variant,
+            Long customerId) {
 
-        List<PurchaseReportDTO> reportList = new ArrayList<>();
+        List<VariantAttribute> attributes =
+                variantAttributeRepo
+                        .findByVariant_VariantIdAndCustomer_Id(
+                                variant.getVariantId(),
+                                customerId);
 
-        for (Purchase p : purchases) {
-            PurchaseReportDTO dto = new PurchaseReportDTO();
-            dto.setSupplierName(p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown");
-            dto.setProductName(p.getProductVariant() != null
-                    ? p.getProductVariant().getProduct().getProductName()
-                    : "Unknown");
-            dto.setQuantity(p.getQuantity());
-            dto.setThresholdPrice(p.getThresholdPrice());
-            dto.setPurchaseDate(p.getPurchaseDate());
-            dto.setCustomerId(customerId);
-            reportList.add(dto);
-        }
+        if (attributes == null || attributes.isEmpty())
+            return "-";
 
-        return reportList;
+        return attributes.stream()
+                .sorted(Comparator.comparing(
+                        a -> a.getAttributeValue()
+                              .getAttribute()
+                              .getId()))
+                .map(a -> a.getAttributeValue().getValue())
+                .collect(Collectors.joining(" / "));
     }
 }
