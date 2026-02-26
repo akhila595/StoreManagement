@@ -3,110 +3,139 @@ package com.shopmanagement.service;
 import com.shopmanagement.dto.ProductDTO;
 import com.shopmanagement.model.*;
 import com.shopmanagement.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class ProductService {
 
-    @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private BrandRepository brandRepository;
-    @Autowired
-    private CategoryRepository categoryRepository;
-    @Autowired
-    private ClothTypeRepository clothTypeRepository;
-    @Autowired
-    private CustomerRepository customerRepository;
-    @Autowired
-    private JwtUtils jwtUtils;
+    @Autowired private ProductRepository productRepository;
+    @Autowired private BrandRepository brandRepository;
+    @Autowired private CategoryRepository categoryRepository;
+    @Autowired private CustomerRepository customerRepository;
+    @Autowired private JwtUtils jwtUtils;
 
-    // =========================
-    // Helper: Entity → DTO
-    // =========================
-    private ProductDTO mapToDTO(Product p) {
+    @Value("${app.upload.image-dir}")
+    private String uploadImageDir;
+
+    /* ============================================================
+       ===================== IMAGE SAVE ===========================
+       ============================================================ */
+
+    private String saveImage(MultipartFile imageFile) {
+
+        if (imageFile == null || imageFile.isEmpty()) return null;
+
+        try {
+            String ext = Optional.ofNullable(imageFile.getOriginalFilename())
+                    .filter(f -> f.contains("."))
+                    .map(f -> f.substring(f.lastIndexOf(".")))
+                    .orElse("");
+
+            String fileName = UUID.randomUUID() + ext;
+
+            Path productImageDir = Paths.get(uploadImageDir, "products");
+
+            if (!Files.exists(productImageDir)) {
+                Files.createDirectories(productImageDir);
+            }
+
+            Path filePath = productImageDir.resolve(fileName);
+            Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/images/products/" + fileName;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store product image", e);
+        }
+    }
+
+    /* ============================================================
+       ===================== ENTITY → DTO =========================
+       ============================================================ */
+
+    private ProductDTO mapToDTO(Product product) {
+
         ProductDTO dto = new ProductDTO();
-        dto.setId(p.getProductId());
-        dto.setProductName(p.getProductName());
-        dto.setDesignCode(p.getDesignCode());
-        dto.setPattern(p.getPattern());
+        dto.setId(product.getProductId());
+        dto.setName(product.getName());
+        dto.setCode(product.getCode());
+
         dto.setImageUrl(
-        	    (p.getImageUrl() != null && !p.getImageUrl().isEmpty())
-        	        ? p.getImageUrl()
-        	        : "/images/products/no-image.png"
-        	);
+                product.getImageUrl() != null
+                        ? product.getImageUrl()
+                        : "/images/products/no-image.png"
+        );
 
-        if (p.getBrand() != null) {
-            dto.setBrandId(p.getBrand().getId());
-            dto.setBrandName(p.getBrand().getBrand());
+        if (product.getBrand() != null) {
+            dto.setBrandId(product.getBrand().getId());
+            dto.setBrandName(product.getBrand().getBrand());
         }
 
-        if (p.getClothType() != null) {
-            dto.setClothTypeId(p.getClothType().getId());
-            dto.setClothTypeName(p.getClothType().getClothType());
-        }
-
-        if (p.getCategory() != null) {
-            dto.setCategoryId(p.getCategory().getCategoryId());
-            dto.setCategoryName(p.getCategory().getCategoryName());
-        }
-
-        if (p.getCustomer() != null) {
-            dto.setCustomerId(p.getCustomer().getId());
+        if (product.getCategory() != null) {
+            dto.setCategoryId(product.getCategory().getCategoryId());
+            dto.setCategoryName(product.getCategory().getCategoryName());
         }
 
         return dto;
     }
 
-    // =========================
-    // Helper: DTO → Entity
-    // =========================
-    private Product mapToEntity(ProductDTO dto) {
+    /* ============================================================
+       ===================== CREATE ===============================
+       ============================================================ */
+
+    public Map<String, Object> createProduct(ProductDTO dto,
+                                             MultipartFile imageFile) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        // 🔥 Auto generate product code if not provided
+        String code = dto.getCode();
+
+        if (code == null || code.isBlank()) {
+            code = generateProductCode(dto.getName(), customerId);
+        }
+
+        // Prevent duplicate code per customer
+        productRepository.findByCodeAndCustomer_Id(code, customerId)
+                .ifPresent(p -> {
+                    throw new RuntimeException("Product code already exists.");
+                });
+
         Product product = new Product();
-        product.setProductId(dto.getId());
-        product.setProductName(dto.getProductName());
-        product.setDesignCode(dto.getDesignCode());
-        product.setPattern(dto.getPattern());
-        product.setImageUrl(dto.getImageUrl());
+        product.setName(dto.getName());
+        product.setCode(code);
+        product.setCustomer(customer);
 
         if (dto.getBrandId() != null) {
             Brand brand = brandRepository.findById(dto.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with ID: " + dto.getBrandId()));
+                    .orElseThrow(() -> new RuntimeException("Brand not found"));
             product.setBrand(brand);
         }
 
         if (dto.getCategoryId() != null) {
             Category category = categoryRepository.findById(dto.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with ID: " + dto.getCategoryId()));
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
             product.setCategory(category);
         }
 
-        if (dto.getClothTypeId() != null) {
-            ClothType clothType = clothTypeRepository.findById(dto.getClothTypeId())
-                    .orElseThrow(() -> new RuntimeException("Cloth Type not found with ID: " + dto.getClothTypeId()));
-            product.setClothType(clothType);
+        if (imageFile != null && !imageFile.isEmpty()) {
+            product.setImageUrl(saveImage(imageFile));
         }
 
-        // ✅ Link customer from JWT token
-        Long customerId = jwtUtils.getRequiredCustomerId();
-        if (customerId != null) {
-            Customer customer = customerRepository.findById(customerId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + customerId));
-            product.setCustomer(customer);
-        }
-
-        return product;
-    }
-
-    // =========================
-    // CREATE
-    // =========================
-    public Map<String, Object> createProduct(ProductDTO dto) {
-        Product product = mapToEntity(dto);
         Product saved = productRepository.save(product);
 
         return Map.of(
@@ -115,33 +144,36 @@ public class ProductService {
         );
     }
 
-    // =========================
-    // READ ALL (Customer Scoped)
-    // =========================
+    /* ============================================================
+       ===================== READ ALL =============================
+       ============================================================ */
+
     public Map<String, Object> getAllProducts() {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        // ✅ Only products belonging to the same customer
-        List<Product> products = productRepository.findByCustomerId(customerId);
-
-        List<ProductDTO> list = products.stream()
+        List<ProductDTO> list = productRepository
+                .findByCustomer_IdAndStatus("ACTIVE",customerId)
+                .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
-
         return Map.of(
                 "message", "Products fetched successfully",
                 "data", list
         );
     }
 
-    // =========================
-    // READ BY ID
-    // =========================
+    /* ============================================================
+       ===================== READ BY ID ===========================
+       ============================================================ */
+
     public Map<String, Object> getProductById(Long id) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        Product product = productRepository.findByProductIdAndCustomerId(id, customerId)
-                .orElseThrow(() -> new RuntimeException("Product not found or unauthorized access"));
+        Product product = productRepository
+                .findByIdAndCustomer_Id(id, customerId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
         return Map.of(
                 "message", "Product fetched successfully",
@@ -149,52 +181,46 @@ public class ProductService {
         );
     }
 
-    // =========================
-    // READ BY DESIGN CODE
-    // =========================
-    public Map<String, Object> getProductByDesignCode(String designCode) {
+    /* ============================================================
+       ===================== UPDATE ===============================
+       ============================================================ */
+
+    public Map<String, Object> updateProduct(Long id,
+                                             ProductDTO dto,
+                                             MultipartFile imageFile) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        Product product = productRepository.findByDesignCodeAndCustomerId(designCode, customerId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Product not found for your account with design code: " + designCode));
+        Product existing = productRepository
+                .findByIdAndCustomer_Id(id, customerId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        return Map.of(
-                "message", "Product fetched successfully by design code",
-                "data", mapToDTO(product)
-        );
-    }
+        existing.setName(dto.getName());
 
-    // =========================
-    // UPDATE
-    // =========================
-    public Map<String, Object> updateProduct(Long id, ProductDTO dto) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+        if (dto.getCode() != null && !dto.getCode().equals(existing.getCode())) {
 
-        Product existing = productRepository.findByProductIdAndCustomerId(id, customerId)
-                .orElseThrow(() -> new RuntimeException("Product not found or unauthorized access"));
+            productRepository.findByCodeAndCustomer_Id(dto.getCode(), customerId)
+                    .ifPresent(p -> {
+                        throw new RuntimeException("Product code already exists.");
+                    });
 
-        existing.setProductName(dto.getProductName());
-        existing.setDesignCode(dto.getDesignCode());
-        existing.setPattern(dto.getPattern());
-        existing.setImageUrl(dto.getImageUrl());
+            existing.setCode(dto.getCode());
+        }
 
         if (dto.getBrandId() != null) {
             Brand brand = brandRepository.findById(dto.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with ID: " + dto.getBrandId()));
+                    .orElseThrow(() -> new RuntimeException("Brand not found"));
             existing.setBrand(brand);
         }
 
         if (dto.getCategoryId() != null) {
             Category category = categoryRepository.findById(dto.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with ID: " + dto.getCategoryId()));
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
             existing.setCategory(category);
         }
 
-        if (dto.getClothTypeId() != null) {
-            ClothType clothType = clothTypeRepository.findById(dto.getClothTypeId())
-                    .orElseThrow(() -> new RuntimeException("Cloth Type not found with ID: " + dto.getClothTypeId()));
-            existing.setClothType(clothType);
+        if (imageFile != null && !imageFile.isEmpty()) {
+            existing.setImageUrl(saveImage(imageFile));
         }
 
         Product updated = productRepository.save(existing);
@@ -205,17 +231,49 @@ public class ProductService {
         );
     }
 
-    // =========================
-    // DELETE
-    // =========================
+    /* ============================================================
+       ===================== DELETE ===============================
+       ============================================================ */
+
     public Map<String, Object> deleteProduct(Long id) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        Product product = productRepository.findByProductIdAndCustomerId(id, customerId)
-                .orElseThrow(() -> new RuntimeException("Product not found or unauthorized access"));
+        Product product = productRepository
+                .findByIdAndCustomer_Id(id, customerId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        productRepository.delete(product);
+        product.setStatus("DELETED");
+        productRepository.save(product);
 
-        return Map.of("message", "Product deleted successfully with ID: " + id);
+        return Map.of("message", "Product deleted successfully");
+    }
+
+    /* ============================================================
+       ===================== PRODUCT CODE GENERATOR ==============
+       ============================================================ */
+
+    private String generateProductCode(String name, Long customerId) {
+
+        if (name == null || name.isBlank()) {
+            throw new RuntimeException("Product name required.");
+        }
+
+        String base = name.replaceAll("[^A-Za-z]", "")
+                          .toUpperCase();
+
+        if (base.length() > 6) {
+            base = base.substring(0, 6);
+        }
+
+        String code = base;
+        int counter = 1;
+
+        while (productRepository.existsByCodeAndCustomer_Id(code, customerId)) {
+            code = base + counter;
+            counter++;
+        }
+
+        return code;
     }
 }

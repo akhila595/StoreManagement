@@ -83,10 +83,16 @@ public class StockService {
         Product product;
 
         // 1️⃣ PRODUCT HANDLE
+     // 1️⃣ PRODUCT HANDLE
         if (dto.getProductId() != null) {
 
             product = productRepo.findByIdAndCustomer_Id(dto.getProductId(), customerId)
                     .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            // 🔥 IMPORTANT: Prevent operations on deleted product
+            if ("DELETED".equals(product.getStatus())) {
+                throw new RuntimeException("Cannot add stock to a deleted product.");
+            }
 
             if (imageFile != null && !imageFile.isEmpty()) {
                 product.setImageUrl(saveImage(imageFile));
@@ -103,11 +109,15 @@ public class StockService {
 
             product = new Product();
             product.setName(dto.getProductName());
+
             String generatedCode = generateProductCode(dto.getProductName(), customerId);
-            product.setCode(generatedCode); //  IMPORTANT
+            product.setCode(generatedCode);
+
             product.setCategory(category);
             product.setBrand(brand);
             product.setCustomer(customer);
+
+            product.setStatus("ACTIVE"); // 🔥 ALWAYS set ACTIVE on creation
 
             if (imageFile != null && !imageFile.isEmpty()) {
                 product.setImageUrl(saveImage(imageFile));
@@ -115,7 +125,6 @@ public class StockService {
 
             product = productRepo.save(product);
         }
-
         // 2️⃣ ATTRIBUTE VALIDATION
         List<ProductAttribute> productAttributes =
                 productAttributeRepo.findByProduct_IdAndCustomer_Id(product.getProductId(), customerId);
@@ -224,6 +233,7 @@ public class StockService {
         movement.setProductVariant(variant);
         movement.setMovementType("IN");
         movement.setQuantity(dto.getQuantity());
+        movement.setPurchase(purchase);
         movement.setMovementDate(LocalDateTime.now());
         movement.setRemarks(dto.getRemarks());
         movement.setCustomer(customer);

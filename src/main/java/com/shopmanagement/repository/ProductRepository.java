@@ -30,6 +30,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     boolean existsByNameAndCustomer_Id(String name, Long customerId);
 
-	Optional findByCustomer_Id(Long customerId);
+  
 
 }
