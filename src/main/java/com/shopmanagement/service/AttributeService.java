@@ -1,21 +1,32 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.dto.AttributeDTO;
-import com.shopmanagement.model.*;
-import com.shopmanagement.repository.*;
+import com.shopmanagement.model.Attribute;
+import com.shopmanagement.model.Customer;
+import com.shopmanagement.repository.AttributeRepository;
+import com.shopmanagement.repository.CustomerRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
 
 @Service
+@Transactional
 public class AttributeService {
 
-    @Autowired private AttributeRepository attributeRepository;
-    @Autowired private CustomerRepository customerRepository;
-    @Autowired private JwtUtils jwtUtils;
+    private final AttributeRepository attributeRepository;
+    private final CustomerRepository customerRepository;
+    private final JwtUtils jwtUtils;
+
+    public AttributeService(AttributeRepository attributeRepository,
+                            CustomerRepository customerRepository,
+                            JwtUtils jwtUtils) {
+        this.attributeRepository = attributeRepository;
+        this.customerRepository = customerRepository;
+        this.jwtUtils = jwtUtils;
+    }
 
     /* ================= CREATE ================= */
 
@@ -23,7 +34,11 @@ public class AttributeService {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        attributeRepository.findByNameAndCustomer_Id(dto.getName(), customerId)
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+            throw new RuntimeException("Attribute name cannot be empty.");
+        }
+
+        attributeRepository.findByNameAndCustomer_Id(dto.getName().trim(), customerId)
                 .ifPresent(a -> {
                     throw new RuntimeException("Attribute already exists.");
                 });
@@ -32,17 +47,17 @@ public class AttributeService {
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
         Attribute attribute = new Attribute();
-        attribute.setName(dto.getName());
+        attribute.setName(dto.getName().trim());
         attribute.setCustomer(customer);
 
         Attribute saved = attributeRepository.save(attribute);
 
-        return Map.of("message", "Attribute created",
-                "data", saved);
+        return Map.of("message", "Attribute created", "data", saved);
     }
 
-    /* ================= READ ALL ================= */
+    /* ================= READ ================= */
 
+    @Transactional(readOnly = true)
     public List<Attribute> getAllAttributes() {
         Long customerId = jwtUtils.getRequiredCustomerId();
         return attributeRepository.findByCustomer_Id(customerId);
@@ -58,7 +73,16 @@ public class AttributeService {
                 .findByIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
-        attribute.setName(dto.getName());
+        String newName = dto.getName().trim();
+
+        // Prevent duplicate during update
+        attributeRepository.findByNameAndCustomer_Id(newName, customerId)
+                .filter(a -> !a.getId().equals(id))
+                .ifPresent(a -> {
+                    throw new RuntimeException("Another attribute with this name already exists.");
+                });
+
+        attribute.setName(newName);
         attributeRepository.save(attribute);
 
         return "Attribute updated successfully";
@@ -74,7 +98,7 @@ public class AttributeService {
                 .findByIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
-        attributeRepository.delete(attribute);
+        attributeRepository.delete(attribute); // or soft delete if using status
 
         return "Attribute deleted successfully";
     }

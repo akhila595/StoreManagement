@@ -24,8 +24,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     // ==========================================================
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+
         User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found: " + email));
 
         return buildUserDetails(user);
     }
@@ -33,9 +35,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     // ==========================================================
     // Load user by ID (used after decoding JWT)
     // ==========================================================
-    public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
+    public UserDetails loadUserById(Long userId)
+            throws UsernameNotFoundException {
+
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found for ID: " + userId));
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found for ID: " + userId));
 
         return buildUserDetails(user);
     }
@@ -44,17 +49,36 @@ public class CustomUserDetailsService implements UserDetailsService {
     // Build Spring UserDetails object from our User entity
     // ==========================================================
     private UserDetails buildUserDetails(User user) {
-        List<GrantedAuthority> authorities = user.getRoles()
-                .stream()
-                .map(Role::getName)
-                .map(r -> "ROLE_" + r.toUpperCase())
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
 
+        // 🔥 1️⃣ Check user status
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new UsernameNotFoundException("User is inactive or deleted");
+        }
+
+        // 🔥 2️⃣ Check customer status
+        if (user.getCustomer() == null ||
+                !"ACTIVE".equalsIgnoreCase(user.getCustomer().getStatus())) {
+            throw new UsernameNotFoundException("Customer is inactive");
+        }
+
+        // 🔥 3️⃣ Convert roles to authorities
+        List<GrantedAuthority> authorities =
+                user.getRoles()
+                        .stream()
+                        .map(Role::getName)
+                        .map(r -> "ROLE_" + r.toUpperCase())
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
+
+        // 🔥 4️⃣ Use full Spring constructor with flags
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),        // username
-                user.getPassword(),     // password
-                authorities             // roles/authorities
+                user.getEmail(),                  // username
+                user.getPassword(),               // password
+                true,                             // enabled
+                true,                             // accountNonExpired
+                true,                             // credentialsNonExpired
+                true,                             // accountNonLocked
+                authorities
         );
     }
 }

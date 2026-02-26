@@ -38,36 +38,46 @@ public class UserService {
     }
 
     // ==========================================================
-    // GET ALL USERS (Scoped by Customer if not SuperAdmin)
+    // GET ALL USERS
     // ==========================================================
     public List<UserDTO> getAll() {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
         List<User> users;
-        if (customerId == null) {
-            // 🟩 SuperAdmin → See all users
-            users = userRepo.findAll();
+
+        if (isSuperAdmin) {
+            users = userRepo.findByStatus("ACTIVE");
         } else {
-            users = userRepo.findByCustomer_Id(customerId);
+            if (customerId == null)
+                throw new RuntimeException("Unauthorized");
+
+            users = userRepo.findByCustomer_IdAndStatus(customerId, "ACTIVE");
         }
 
-        return users.stream().map(this::toDTO).collect(Collectors.toList());
+        return users.stream().map(this::toDTO).toList();
     }
 
     // ==========================================================
     // GET USER BY ID
     // ==========================================================
     public UserDTO getById(Long id) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
         User user;
-        if (customerId == null) {
-            // 🟩 SuperAdmin
+
+        if (isSuperAdmin) {
             user = userRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("User not found"));
         } else {
+            if (customerId == null)
+                throw new RuntimeException("Unauthorized");
+
             user = userRepo.findByIdAndCustomer_Id(id, customerId)
-                    .orElseThrow(() -> new RuntimeException("User not found or unauthorized access"));
+                    .orElseThrow(() -> new RuntimeException("User not found or unauthorized"));
         }
 
         return toDTO(user);
@@ -78,7 +88,9 @@ public class UserService {
     // ==========================================================
     @Transactional
     public UserDTO create(UserDTO dto) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
         if (userRepo.findByEmail(dto.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
@@ -88,23 +100,37 @@ public class UserService {
         user.setEmail(dto.getEmail());
         user.setName(dto.getName());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setStatus("ACTIVE");
 
-        // ✅ Assign roles (for both SuperAdmin and Customer Admin)
-        Set<Role> roles = dto.getRoleNames() == null || dto.getRoleNames().isEmpty()
-                ? Set.of()
-                : dto.getRoleNames().stream()
-                        .map(name -> roleRepo.findByName(name)
-                                .orElseThrow(() -> new RuntimeException("Role not found: " + name)))
-                        .collect(Collectors.toSet());
-        user.setRoles(roles);
+        // Assign roles safely
+        if (dto.getRoleNames() != null && !dto.getRoleNames().isEmpty()) {
 
-        // ✅ Assign customer (skip if SuperAdmin)
-        if (customerId != null) {
+            Set<Role> roles = dto.getRoleNames().stream()
+                    .map(name -> {
+                        if (isSuperAdmin)
+                            return roleRepo.findByName(name)
+                                    .orElseThrow(() ->
+                                            new RuntimeException("Role not found: " + name));
+
+                        return roleRepo.findByNameAndCustomer_IdAndStatus(
+                                        name, customerId, "ACTIVE")
+                                .orElseThrow(() ->
+                                        new RuntimeException("Role not found: " + name));
+                    })
+                    .collect(Collectors.toSet());
+
+            user.setRoles(roles);
+        }
+
+        // Assign customer (skip for SuperAdmin)
+        if (!isSuperAdmin) {
+            if (customerId == null)
+                throw new RuntimeException("Customer context missing");
+
             Customer customer = customerRepo.findById(customerId)
                     .orElseThrow(() -> new RuntimeException("Customer not found"));
+
             user.setCustomer(customer);
-        } else {
-            user.setCustomer(null); // SuperAdmin creating user globally
         }
 
         userRepo.save(user);
@@ -117,80 +143,87 @@ public class UserService {
     @Transactional
     public UserDTO update(Long id, UserDTO dto) {
 
-        Long customerId = jwtUtils.getCustomerIdFromToken(); // ⚠️ NOT required
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
         User user;
 
-        // 🔐 Superadmin → can update any user
-        if (jwtUtils.isCurrentUserSuperAdmin()) {
+        if (isSuperAdmin) {
             user = userRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("User not found"));
-        }
-        // 🔐 Admin → restricted to own customer
-        else {
-            if (customerId == null) {
-                throw new RuntimeException("Customer context missing");
-            }
+        } else {
+            if (customerId == null)
+                throw new RuntimeException("Unauthorized");
 
             user = userRepo.findByIdAndCustomer_Id(id, customerId)
                     .orElseThrow(() -> new RuntimeException("User not found or unauthorized"));
         }
 
-        /* ==========================
-           SAFE FIELD UPDATES
-        ========================== */
-
-        // ✅ Name (optional)
+        // Name
         if (dto.getName() != null && !dto.getName().isBlank()) {
             user.setName(dto.getName());
         }
 
-        // ⚠️ Email update (optional – keep if your UI allows)
+        // Email uniqueness check
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+
+            userRepo.findByEmail(dto.getEmail())
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new RuntimeException("Email already exists");
+                    });
+
             user.setEmail(dto.getEmail());
         }
 
-        // ✅ Password (optional)
+        // Password
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
 
-        /* ==========================
-           ROLES — SAFE HANDLING
-           (ONLY update if provided)
-        ========================== */
+        // Roles (optional update)
         if (dto.getRoleNames() != null) {
 
             Set<Role> roles = dto.getRoleNames().isEmpty()
-                    ? Set.of() // explicit role clear if UI sends empty list
+                    ? Set.of()
                     : dto.getRoleNames().stream()
-                            .map(name -> roleRepo.findByName(name)
-                                    .orElseThrow(() ->
-                                            new RuntimeException("Role not found: " + name)))
+                            .map(name -> {
+                                if (isSuperAdmin)
+                                    return roleRepo.findByName(name)
+                                            .orElseThrow(() ->
+                                                    new RuntimeException("Role not found: " + name));
+
+                                return roleRepo.findByNameAndCustomer_IdAndStatus(
+                                                name, customerId, "ACTIVE")
+                                        .orElseThrow(() ->
+                                                new RuntimeException("Role not found: " + name));
+                            })
                             .collect(Collectors.toSet());
 
             user.setRoles(roles);
         }
-     // ✅ Profile image update (optional)
+
+        // Profile image
         if (dto.getProfileImage() != null) {
             user.setProfileImage(dto.getProfileImage());
         }
-
-        // 🚫 If roleNames == null → DO NOTHING (keep existing roles)
 
         userRepo.save(user);
         return toDTO(user);
     }
 
-
     // ==========================================================
-    // DELETE USER
+    // SOFT DELETE USER
     // ==========================================================
+    @Transactional
     public void delete(Long id) {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
         User user;
-        if (customerId == null) {
+
+        if (isSuperAdmin) {
             user = userRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("User not found"));
         } else {
@@ -198,48 +231,52 @@ public class UserService {
                     .orElseThrow(() -> new RuntimeException("User not found or unauthorized"));
         }
 
-        userRepo.delete(user);
+        user.setStatus("DELETED");
+        userRepo.save(user);
     }
 
     // ==========================================================
     // MAPPING TO DTO
     // ==========================================================
     private UserDTO toDTO(User u) {
+
         UserDTO dto = new UserDTO();
         dto.setId(u.getId());
         dto.setEmail(u.getEmail());
         dto.setName(u.getName());
+        dto.setProfileImage(u.getProfileImage());
+
         dto.setRoleNames(
-            u.getRoles().stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet())
+                u.getRoles().stream()
+                        .map(Role::getName)
+                        .collect(Collectors.toSet())
         );
 
         if (u.getCustomer() != null)
             dto.setCustomerId(u.getCustomer().getId());
 
-        // ✅ ADD THIS
-        dto.setProfileImage(u.getProfileImage());
-
         return dto;
     }
 
+    // ==========================================================
+    // GET USERS FOR CURRENT CUSTOMER
+    // ==========================================================
     public List<UserDTO> getUsersWithRolesForCurrentCustomer() {
 
-        Long customerId = jwtUtils.getRequiredCustomerId();
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
         List<User> users;
 
-        // 🟩 SuperAdmin → all users
-        if (customerId == null) {
-            users = userRepo.findAll();
-        }
-        // 🟦 Customer Admin → only own customer users
-        else {
-            users = userRepo.findByCustomer_Id(customerId);
+        if (isSuperAdmin) {
+            users = userRepo.findByStatus("ACTIVE");
+        } else {
+            if (customerId == null)
+                throw new RuntimeException("Unauthorized");
+
+            users = userRepo.findByCustomer_IdAndStatus(customerId, "ACTIVE");
         }
 
         return users.stream().map(this::toDTO).toList();
     }
-
 }

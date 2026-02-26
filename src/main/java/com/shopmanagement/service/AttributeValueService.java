@@ -4,18 +4,29 @@ import com.shopmanagement.dto.AttributeValueDTO;
 import com.shopmanagement.model.*;
 import com.shopmanagement.repository.*;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
 
 @Service
+@Transactional
 public class AttributeValueService {
 
-    @Autowired private AttributeRepository attributeRepository;
-    @Autowired private AttributeValueRepository attributeValueRepository;
-    @Autowired private CustomerRepository customerRepository;
-    @Autowired private JwtUtils jwtUtils;
+    private final AttributeRepository attributeRepository;
+    private final AttributeValueRepository attributeValueRepository;
+    private final CustomerRepository customerRepository;
+    private final JwtUtils jwtUtils;
+
+    public AttributeValueService(AttributeRepository attributeRepository,
+                                 AttributeValueRepository attributeValueRepository,
+                                 CustomerRepository customerRepository,
+                                 JwtUtils jwtUtils) {
+        this.attributeRepository = attributeRepository;
+        this.attributeValueRepository = attributeValueRepository;
+        this.customerRepository = customerRepository;
+        this.jwtUtils = jwtUtils;
+    }
 
     /* ================= CREATE ================= */
 
@@ -23,13 +34,19 @@ public class AttributeValueService {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
+        if (dto.getValue() == null || dto.getValue().trim().isEmpty()) {
+            throw new RuntimeException("Value cannot be empty.");
+        }
+
         Attribute attribute = attributeRepository
                 .findByIdAndCustomer_Id(dto.getAttributeId(), customerId)
                 .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
         attributeValueRepository
                 .findByValueAndAttribute_IdAndCustomer_Id(
-                        dto.getValue(), dto.getAttributeId(), customerId)
+                        dto.getValue().trim(),
+                        dto.getAttributeId(),
+                        customerId)
                 .ifPresent(v -> {
                     throw new RuntimeException("Value already exists for this attribute.");
                 });
@@ -38,8 +55,10 @@ public class AttributeValueService {
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
         AttributeValue value = new AttributeValue();
-        value.setValue(dto.getValue());
-        value.setCode(dto.getCode().toUpperCase());
+        value.setValue(dto.getValue().trim());
+        value.setCode(dto.getCode() != null
+                ? dto.getCode().trim().toUpperCase()
+                : null);
         value.setAttribute(attribute);
         value.setCustomer(customer);
 
@@ -50,6 +69,7 @@ public class AttributeValueService {
 
     /* ================= READ ================= */
 
+    @Transactional(readOnly = true)
     public List<AttributeValue> getValuesByAttribute(Long attributeId) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
@@ -68,8 +88,10 @@ public class AttributeValueService {
                 .findByIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Value not found"));
 
-        value.setValue(dto.getValue());
-        value.setCode(dto.getCode().toUpperCase());
+        value.setValue(dto.getValue().trim());
+        value.setCode(dto.getCode() != null
+                ? dto.getCode().trim().toUpperCase()
+                : null);
 
         attributeValueRepository.save(value);
 

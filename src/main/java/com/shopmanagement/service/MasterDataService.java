@@ -3,10 +3,9 @@ package com.shopmanagement.service;
 import com.shopmanagement.model.*;
 import com.shopmanagement.repository.*;
 
-import jakarta.transaction.Transactional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -14,63 +13,99 @@ import java.util.List;
 @Transactional
 public class MasterDataService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    @Autowired private CategoryRepository categoryRepository;
+    @Autowired private BrandRepository brandRepository;
+    @Autowired private CustomerRepository customerRepository;
+    @Autowired private JwtUtils jwtUtils;
 
-    @Autowired
-    private BrandRepository brandRepository;
+    /* ==========================================================
+       ===================== CATEGORY ============================
+       ========================================================== */
 
-    @Autowired
-    private ClothTypeRepository clothTypeRepository;
-
-    @Autowired
-    private ColorRepository colorRepository;
-
-    @Autowired
-    private SizeRepository sizeRepository;
-
-    // -------- Categories --------
     public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        return categoryRepository
+                .findByCustomer_IdAndStatus(customerId, "ACTIVE");
     }
 
     public Category addCategory(Category category) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        // Duplicate check
+        categoryRepository
+                .findByCategoryNameAndCustomer_Id(category.getCategoryName(), customerId)
+                .ifPresent(c -> {
+                    throw new RuntimeException("Category already exists.");
+                });
+
+        category.setCustomer(customer);
+        category.setStatus("ACTIVE");
+
         return categoryRepository.save(category);
     }
 
-    // -------- Brands --------
+    public String deleteCategory(Long categoryId) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Category category = categoryRepository
+                .findByCategoryIdAndCustomer_Id(categoryId, customerId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        category.setStatus("DELETED");
+        categoryRepository.save(category);
+
+        return "Category deleted successfully";
+    }
+
+    /* ==========================================================
+       ===================== BRAND ===============================
+       ========================================================== */
+
     public List<Brand> getAllBrands() {
-        return brandRepository.findAll();
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        return brandRepository
+                .findByCustomer_IdAndStatus(customerId, "ACTIVE");
     }
 
     public Brand addBrand(Brand brand) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        brandRepository
+                .findByBrandAndCustomer_Id(brand.getBrand(), customerId)
+                .ifPresent(b -> {
+                    throw new RuntimeException("Brand already exists.");
+                });
+
+        brand.setCustomer(customer);
+        brand.setStatus("ACTIVE");
+
         return brandRepository.save(brand);
     }
 
-    // -------- Cloth Types --------
-    public List<ClothType> getAllClothTypes() {
-        return clothTypeRepository.findAll();
-    }
+    public String deleteBrand(Long brandId) {
 
-    public ClothType addClothType(ClothType clothType) {
-        return clothTypeRepository.save(clothType);
-    }
+        Long customerId = jwtUtils.getRequiredCustomerId();
 
-    // -------- Colors --------
-    public List<Color> getAllColors() {
-        return colorRepository.findAll();
-    }
+        Brand brand = brandRepository
+                .findByIdAndCustomer_Id(brandId, customerId)
+                .orElseThrow(() -> new RuntimeException("Brand not found"));
 
-    public Color addColor(Color color) {
-        return colorRepository.save(color);
-    }
+        brand.setStatus("DELETED");
+        brandRepository.save(brand);
 
-    // -------- Sizes --------
-    public List<Size> getAllSizes() {
-        return sizeRepository.findAll();
-    }
-
-    public Size addSize(Size size) {
-        return sizeRepository.save(size);
+        return "Brand deleted successfully";
     }
 }

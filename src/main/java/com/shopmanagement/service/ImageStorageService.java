@@ -2,6 +2,10 @@ package com.shopmanagement.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -14,32 +18,50 @@ public class ImageStorageService {
     @Value("${app.upload.user-images}")
     private String uploadDir;
 
-    public String storeUserProfileImage(Long userId, MultipartFile file) throws IOException {
+    // 🔥 Allowed extensions
+    private static final Set<String> ALLOWED_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "gif", "webp");
+
+    // 🔥 Max file size (5MB)
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+    public String storeUserProfileImage(Long userId, MultipartFile file)
+            throws IOException {
 
         if (file.isEmpty()) {
             throw new RuntimeException("Uploaded file is empty");
         }
 
-        if (file.getContentType() == null || !file.getContentType().startsWith("image/")) {
-            throw new RuntimeException("Only image files are allowed");
-        }
-
-        File dir = new File(uploadDir);
-
-        // ✅ CREATE DIRECTORY TREE IF MISSING
-        if (!dir.exists() && !dir.mkdirs()) {
-            throw new IOException("Failed to create upload directory: " + uploadDir);
+        // 🔥 File size check
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new RuntimeException("File size exceeds 5MB limit");
         }
 
         String original = file.getOriginalFilename();
-        String ext = original.substring(original.lastIndexOf("."));
 
-        String filename = "user-" + userId + "-" + UUID.randomUUID() + ext;
+        if (original == null || !original.contains(".")) {
+            throw new RuntimeException("Invalid file name");
+        }
 
-        File destination = new File(dir, filename);
-        file.transferTo(destination);
+        String ext = original.substring(original.lastIndexOf(".") + 1)
+                .toLowerCase();
 
-        // Public URL (used by frontend)
+        // 🔥 Extension validation
+        if (!ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new RuntimeException("Only JPG, PNG, GIF, WEBP images allowed");
+        }
+
+        // 🔥 Create directory safely
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Files.createDirectories(uploadPath);
+
+        String filename = "user-" + userId + "-" +
+                UUID.randomUUID() + "." + ext;
+
+        Path targetLocation = uploadPath.resolve(filename);
+
+        file.transferTo(targetLocation.toFile());
+
         return "/images/users/" + filename;
     }
 }

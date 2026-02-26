@@ -1,63 +1,87 @@
 package com.shopmanagement.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import com.shopmanagement.service.JwtUtil;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class JwtUtils {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    // ==========================================================
+    // 🔐 Get Current Authenticated User ID
+    // ==========================================================
+    public Long getUserId() {
 
-    @Autowired
-    private HttpServletRequest request;
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
 
-    // ✅ Unified customerId resolver (SAFE)
-    public Long getCustomerIdFromToken() {
-
-        Object customerAttr = request.getAttribute("customerId");
-        if (customerAttr instanceof Long) {
-            return (Long) customerAttr;
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
         }
 
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            return jwtUtil.extractCustomerId(token);
-        }
+        Object principal = authentication.getPrincipal();
 
-        return null;
-    }
-
-    public Long getUserIdFromToken() {
-        Object userAttr = request.getAttribute("userId");
-        if (userAttr instanceof Long) {
-            return (Long) userAttr;
-        }
-
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            return jwtUtil.extractUserId(token);
+        if (principal instanceof CustomUserPrincipal userPrincipal) {
+            return userPrincipal.getUserId();
         }
 
         return null;
     }
 
-    public boolean isCurrentUserSuperAdmin() {
-        Object flag = request.getAttribute("isSuperAdmin");
-        return flag instanceof Boolean && (Boolean) flag;
+    // ==========================================================
+    // 🔐 Get Current Customer ID
+    // ==========================================================
+    public Long getCustomerId() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof CustomUserPrincipal userPrincipal) {
+            return userPrincipal.getCustomerId();
+        }
+
+        return null;
     }
-    
+
+    // ==========================================================
+    // 🔐 Required Customer ID
+    // ==========================================================
     public Long getRequiredCustomerId() {
-    	 Long customerId = getCustomerIdFromToken();
+
+        Long customerId = getCustomerId();
+
         if (customerId == null) {
-            throw new RuntimeException("Please select a customer");
+            throw new IllegalStateException("Unauthorized or customer not selected");
         }
+
         return customerId;
+    }
+
+    // ==========================================================
+    // 🔐 SuperAdmin Check
+    // ==========================================================
+    public boolean isCurrentUserSuperAdmin() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getPrincipal())) {
+            return false;
+        }
+
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPERADMIN"));
     }
 }

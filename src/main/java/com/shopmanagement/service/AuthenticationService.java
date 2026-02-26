@@ -72,41 +72,60 @@ public class AuthenticationService {
     // 🔐 LOGIN / AUTHENTICATE
     // ==========================================================
     public Map<String, Object> authenticate(String email, String password) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+        // 🔥 1️⃣ Load only ACTIVE users directly from DB
+        User user = userRepository
+                .findByEmailAndStatus(email, "ACTIVE")
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found or inactive"));
+
+        // 🔥 2️⃣ Password validation
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        Long customerId = (user.getCustomer() != null) ? user.getCustomer().getId() : null;
+        // 🔥 3️⃣ Check customer status (skip for SUPERADMIN)
+        boolean isSuperAdmin = user.getRoles() != null &&
+                user.getRoles().stream()
+                        .anyMatch(r -> "SUPERADMIN".equalsIgnoreCase(r.getName()));
 
-        // ✅ Generate token with only userId and customerId
+        if (!isSuperAdmin) {
+            if (user.getCustomer() == null ||
+                    !"ACTIVE".equalsIgnoreCase(user.getCustomer().getStatus())) {
+                throw new BadCredentialsException("Customer account is inactive");
+            }
+        }
+
+        Long customerId = (user.getCustomer() != null)
+                ? user.getCustomer().getId()
+                : null;
+
+        // 🔥 4️⃣ Generate JWT
         String token = jwtUtil.generateToken(user.getId(), customerId);
 
-        // ✅ Collect permissions safely (user may not have any yet)
+        // 🔥 5️⃣ Collect permissions safely
         Set<String> permissionCodes = new HashSet<>();
+
         if (user.getRoles() != null) {
             user.getRoles().forEach(role -> {
                 if (role.getPermissions() != null) {
-                    role.getPermissions().forEach(p -> permissionCodes.add(p.getCode()));
+                    role.getPermissions()
+                            .forEach(p -> permissionCodes.add(p.getCode()));
                 }
             });
         }
 
-        // ✅ Prepare response
+        // 🔥 6️⃣ Prepare response
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("userId", user.getId());
         response.put("customerId", customerId);
         response.put("name", user.getName());
         response.put("email", user.getEmail());
-        response.put("roles", (user.getRoles() != null)
-                ? user.getRoleNames()
-                : Set.of("SUPERADMIN")); // default fallback
+        response.put("roles", user.getRoleNames());
         response.put("permissions", permissionCodes);
         response.put("profileImage", user.getProfileImage());
-        
+
         return response;
     }
 }

@@ -41,5 +41,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     // 🔹 Soft-delete support (if you mark customers as INACTIVE instead of deleting)
     List<Customer> findByStatusNot(String status);
+    
+    Optional<Customer> findByIdAndStatus(Long id, String status);
    
 }

@@ -1,7 +1,7 @@
 package com.shopmanagement.service;
 
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,6 +33,7 @@ public class CustomerService {
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            PermissionRepository permissionRepository) {
+
         this.customerRepository = customerRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
@@ -40,77 +41,104 @@ public class CustomerService {
         this.permissionRepository = permissionRepository;
     }
 
-    // ==========================================================
-    // CREATE CUSTOMER + ADMIN USER
-    // ==========================================================
+    /* ==========================================================
+       CREATE CUSTOMER + TENANT ADMIN USER
+       ========================================================== */
+
     @Transactional
     public CustomerDTO createCustomerWithAdmin(CustomerRegistrationRequest request) {
-        // 1️⃣ Create new customer
+
+        // 1️⃣ Prevent duplicate customer email
+        if (customerRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Customer email already exists.");
+        }
+
+        // 2️⃣ Prevent duplicate admin email
+        if (userRepository.existsByEmail(request.getAdminEmail())) {
+            throw new RuntimeException("Admin email already exists.");
+        }
+
+        // 3️⃣ Create Customer
         Customer customer = new Customer();
         customer.setCustomerName(request.getName());
         customer.setEmail(request.getEmail());
         customer.setPhone(request.getPhone());
         customer.setAddress(request.getAddress());
         customer.setGstNumber(request.getGstNumber());
+        customer.setStatus("ACTIVE");
+
+        // saveAndFlush ensures ID is generated immediately
         customer = customerRepository.saveAndFlush(customer);
 
-        // 2️⃣ Ensure global ADMIN role template exists
-        Role adminTemplate = roleRepository.findByNameAndCustomerIsNull("ADMIN").orElse(null);
-        if (adminTemplate == null) {
-            adminTemplate = new Role();
-            adminTemplate.setName("ADMIN");
-            adminTemplate.setDescription("Global ADMIN role template");
-            adminTemplate.setCustomer(null);
-            adminTemplate.setPermissions(new java.util.HashSet<>(permissionRepository.findAll()));
-            adminTemplate = roleRepository.save(adminTemplate);
-        }
-
-        // 3️⃣ Create ADMIN role for this customer
-        Role customerAdminRole = new Role();
-        customerAdminRole.setName("ADMIN");
-        customerAdminRole.setDescription("Admin role for customer " + customer.getCustomerName());
-        customerAdminRole.setPermissions(new java.util.HashSet<>(adminTemplate.getPermissions()));
-        customerAdminRole.setCustomer(customer);
-        roleRepository.save(customerAdminRole);
-
-        // 4️⃣ Create admin user for this customer
+     // Create final reference for lambda usage
+        final Customer savedCustomer = customer;
+        
+     // 4️⃣ Create or get ADMIN role safely
+        Role adminRole = roleRepository
+                .findByNameAndCustomer_IdAndStatus("ADMIN", savedCustomer.getId(), "ACTIVE")
+                .orElseGet(() -> {
+                    Role role = new Role();
+                    role.setName("ADMIN");
+                    role.setDescription("Admin role for " + savedCustomer.getCustomerName());
+                    role.setCustomer(savedCustomer);
+                    role.setPermissions(new HashSet<>(permissionRepository.findAll()));
+                    role.setStatus("ACTIVE");
+                    return roleRepository.save(role);
+                });
+        
+        // 5️⃣ Create Admin User
         User adminUser = new User();
         adminUser.setName(request.getAdminName());
         adminUser.setEmail(request.getAdminEmail());
         adminUser.setPassword(passwordEncoder.encode(request.getAdminPassword()));
         adminUser.setCustomer(customer);
-        adminUser.setRoles(Set.of(customerAdminRole));
+        adminUser.setRoles(Set.of(adminRole));
+        adminUser.setStatus("ACTIVE");
+
         userRepository.save(adminUser);
 
-        // ✅ Return DTO
         return mapToDTO(customer);
     }
 
-    // ==========================================================
-    // GET ALL CUSTOMERS
-    // ==========================================================
+    /* ==========================================================
+       GET ALL CUSTOMERS (ACTIVE ONLY)
+       ========================================================== */
+
     public List<CustomerDTO> getAllCustomers() {
-        return customerRepository.findAll()
+
+        return customerRepository.findByStatus("ACTIVE")
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
 
-    // ==========================================================
-    // GET CUSTOMER BY ID
-    // ==========================================================
+    /* ==========================================================
+       GET CUSTOMER BY ID
+       ========================================================== */
+
     public CustomerDTO getCustomerById(Long id) {
-        return customerRepository.findById(id)
-                .map(this::mapToDTO)
+
+        Customer customer = customerRepository.findByIdAndStatus(id, "ACTIVE")
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        return mapToDTO(customer);
     }
 
-    // ==========================================================
-    // UPDATE CUSTOMER
-    // ==========================================================
+    /* ==========================================================
+       UPDATE CUSTOMER
+       ========================================================== */
+
+    @Transactional
     public CustomerDTO updateCustomer(Long id, Customer updated) {
-        Customer customer = customerRepository.findById(id)
+
+        Customer customer = customerRepository.findByIdAndStatus(id, "ACTIVE")
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        // 🔥 Protect email uniqueness
+        if (!customer.getEmail().equals(updated.getEmail()) &&
+                customerRepository.existsByEmail(updated.getEmail())) {
+            throw new RuntimeException("Email already in use.");
+        }
 
         customer.setCustomerName(updated.getCustomerName());
         customer.setEmail(updated.getEmail());
@@ -119,45 +147,55 @@ public class CustomerService {
         customer.setGstNumber(updated.getGstNumber());
 
         customer = customerRepository.save(customer);
+
         return mapToDTO(customer);
     }
 
-    // ==========================================================
-    // DELETE CUSTOMER + RELATED USERS & ROLES
-    // ==========================================================
+    /* ==========================================================
+       SOFT DELETE CUSTOMER (Safe)
+       ========================================================== */
+
     @Transactional
     public void deleteCustomer(Long id) {
-        Optional<Customer> customerOpt = customerRepository.findById(id);
 
-        if (customerOpt.isEmpty()) {
-            throw new RuntimeException("Customer with ID " + id + " not found.");
+        Customer customer = customerRepository.findByIdAndStatus(id, "ACTIVE")
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        // Optional protection for system tenant
+        if (customer.getId() == 1L) {
+            throw new RuntimeException("System customer cannot be deleted.");
         }
 
-        Customer customer = customerOpt.get();
+        // 1️⃣ Soft delete customer
+        customer.setStatus("DELETED");
+        customerRepository.save(customer);
 
-        // 1️⃣ Delete all users linked to this customer
-        userRepository.deleteAll(userRepository.findByCustomer_Id(id));
+        // 2️⃣ Soft delete users
+        List<User> users = userRepository.findByCustomer_Id(id);
+        users.forEach(u -> u.setStatus("DELETED"));
+        userRepository.saveAll(users);
 
-        // 2️⃣ Delete all roles linked to this customer
-        roleRepository.deleteAll(roleRepository.findByCustomer_Id(id));
+        // 3️⃣ Soft delete roles
+        List<Role> roles = roleRepository.findByCustomer_Id(id);
+        roles.forEach(r -> r.setStatus("DELETED"));
+        roleRepository.saveAll(roles);
 
-        // 3️⃣ Delete the customer itself
-        customerRepository.deleteById(id);
-
-        System.out.println("🗑️ Customer " + customer.getCustomerName() + " deleted successfully.");
+        System.out.println("🗑️ Customer soft deleted safely.");
     }
 
-    // ==========================================================
-    // ENTITY → DTO MAPPING
-    // ==========================================================
+    /* ==========================================================
+       ENTITY → DTO
+       ========================================================== */
+
     private CustomerDTO mapToDTO(Customer customer) {
+
         return new CustomerDTO(
-            customer.getId(),
-            customer.getCustomerName(),
-            customer.getEmail(),
-            customer.getPhone(),
-            customer.getAddress(),
-            customer.getGstNumber()
+                customer.getId(),
+                customer.getCustomerName(),
+                customer.getEmail(),
+                customer.getPhone(),
+                customer.getAddress(),
+                customer.getGstNumber()
         );
     }
 }
