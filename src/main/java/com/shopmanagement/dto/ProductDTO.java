@@ -1,5 +1,7 @@
 package com.shopmanagement.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,6 +28,9 @@ public class ProductDTO {
     // Category
     private Long categoryId;
     private String categoryName; // read-only
+    
+    private List<Long> attributeIds;
+    
 	public Long getId() {
 		return id;
 	}
@@ -73,6 +78,12 @@ public class ProductDTO {
 	}
 	public void setCategoryName(String categoryName) {
 		this.categoryName = categoryName;
+	}
+	public List<Long> getAttributeIds() {
+		return attributeIds;
+	}
+	public void setAttributeIds(List<Long> attributeIds) {
+		this.attributeIds = attributeIds;
 	}
     
 }

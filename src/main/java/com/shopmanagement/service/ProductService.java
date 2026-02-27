@@ -24,6 +24,8 @@ public class ProductService {
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private CustomerRepository customerRepository;
     @Autowired private JwtUtils jwtUtils;
+    @Autowired private AttributeRepository attributeRepository;
+    @Autowired private ProductAttributeRepository productAttributeRepository;
 
     @Value("${app.upload.image-dir}")
     private String uploadImageDir;
@@ -137,7 +139,7 @@ public class ProductService {
         }
 
         Product saved = productRepository.save(product);
-
+        linkAttributesToProduct(saved, dto.getAttributeIds(), customer);
         return Map.of(
                 "message", "Product created successfully",
                 "data", mapToDTO(saved)
@@ -224,7 +226,8 @@ public class ProductService {
         }
 
         Product updated = productRepository.save(existing);
-
+        productAttributeRepository.deleteByProduct_ProductIdAndCustomer_Id(id, customerId);
+        linkAttributesToProduct(existing, dto.getAttributeIds(), existing.getCustomer());
         return Map.of(
                 "message", "Product updated successfully",
                 "data", mapToDTO(updated)
@@ -276,4 +279,29 @@ public class ProductService {
 
         return code;
     }
+    
+    private void linkAttributesToProduct(
+            Product product,
+            List<Long> attributeIds,
+            Customer customer) {
+
+        if (attributeIds == null || attributeIds.isEmpty()) {
+            return;
+        }
+
+        for (Long attributeId : attributeIds) {
+
+            Attribute attribute = attributeRepository
+                    .findByIdAndCustomer_Id(attributeId, customer.getId())
+                    .orElseThrow(() -> new RuntimeException("Invalid attribute"));
+
+            ProductAttribute pa = new ProductAttribute();
+            pa.setProduct(product);
+            pa.setAttribute(attribute);
+            pa.setCustomer(customer);
+
+            productAttributeRepository.save(pa);
+        }
+    }
+    
 }

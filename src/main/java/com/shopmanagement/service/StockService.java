@@ -39,7 +39,7 @@ public class StockService {
     private String uploadImageDir;
 
     /* ============================================================
-       =====================  IMAGE SAVE  =========================
+       ===================== IMAGE SAVE ===========================
        ============================================================ */
 
     private String saveImage(MultipartFile imageFile) {
@@ -71,7 +71,7 @@ public class StockService {
     }
 
     /* ============================================================
-       =====================  STOCK IN  ===========================
+       ===================== STOCK IN =============================
        ============================================================ */
 
     public String stockIn(StockInRequestDTO dto, MultipartFile imageFile) {
@@ -82,21 +82,13 @@ public class StockService {
 
         Product product;
 
-        // 1️⃣ PRODUCT HANDLE
-     // 1️⃣ PRODUCT HANDLE
         if (dto.getProductId() != null) {
 
             product = productRepo.findByIdAndCustomer_Id(dto.getProductId(), customerId)
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
-            // 🔥 IMPORTANT: Prevent operations on deleted product
             if ("DELETED".equals(product.getStatus())) {
                 throw new RuntimeException("Cannot add stock to a deleted product.");
-            }
-
-            if (imageFile != null && !imageFile.isEmpty()) {
-                product.setImageUrl(saveImage(imageFile));
-                productRepo.save(product);
             }
 
         } else {
@@ -109,15 +101,11 @@ public class StockService {
 
             product = new Product();
             product.setName(dto.getProductName());
-
-            String generatedCode = generateProductCode(dto.getProductName(), customerId);
-            product.setCode(generatedCode);
-
+            product.setCode(generateProductCode(dto.getProductName(), customerId));
             product.setCategory(category);
             product.setBrand(brand);
             product.setCustomer(customer);
-
-            product.setStatus("ACTIVE"); // 🔥 ALWAYS set ACTIVE on creation
+            product.setStatus("ACTIVE");
 
             if (imageFile != null && !imageFile.isEmpty()) {
                 product.setImageUrl(saveImage(imageFile));
@@ -125,7 +113,8 @@ public class StockService {
 
             product = productRepo.save(product);
         }
-        // 2️⃣ ATTRIBUTE VALIDATION
+
+        // ATTRIBUTE VALIDATION
         List<ProductAttribute> productAttributes =
                 productAttributeRepo.findByProduct_IdAndCustomer_Id(product.getProductId(), customerId);
 
@@ -161,10 +150,9 @@ public class StockService {
             }
         }
 
-        // 3️⃣ GENERATE SKU
+        // GENERATE SKU
         String sku = generateSku(product, selectedValueIds);
 
-        // 4️⃣ FIND OR CREATE VARIANT
         Optional<ProductVariant> existingVariant =
                 variantRepo.findByProductSkuAndCustomer_Id(sku, customerId);
 
@@ -186,8 +174,10 @@ public class StockService {
 
             variant = variantRepo.save(variant);
 
-            // Save VariantAttribute mappings
-            for (Long valueId : selectedValueIds) {
+            // ✅ FIX 2: Use Set to prevent duplicates
+            Set<Long> uniqueValueIds = new HashSet<>(selectedValueIds);
+
+            for (Long valueId : uniqueValueIds) {
 
                 AttributeValue value = attributeValueRepo
                         .findByIdAndCustomer_Id(valueId, customerId)
@@ -202,13 +192,13 @@ public class StockService {
             }
         }
 
-        // 5️⃣ UPDATE STOCK
+        // UPDATE STOCK
         variant.setStockQty(variant.getStockQty() + dto.getQuantity());
         variant.setCostPrice(dto.getCostPrice());
         variant.setSellingPrice(dto.getSellingPrice());
         variantRepo.save(variant);
 
-        // 6️⃣ SUPPLIER
+        // SUPPLIER
         Supplier supplier = supplierRepo
                 .findBySupplierNameAndCustomer_Id(dto.getSupplierName(), customerId)
                 .orElseGet(() -> {
@@ -218,7 +208,7 @@ public class StockService {
                     return supplierRepo.save(s);
                 });
 
-        // 7️⃣ PURCHASE
+        // PURCHASE
         Purchase purchase = new Purchase();
         purchase.setProductVariant(variant);
         purchase.setQuantity(dto.getQuantity());
@@ -228,7 +218,7 @@ public class StockService {
         purchase.setCustomer(customer);
         purchaseRepo.save(purchase);
 
-        // 8️⃣ STOCK MOVEMENT
+        // STOCK MOVEMENT
         StockMovement movement = new StockMovement();
         movement.setProductVariant(variant);
         movement.setMovementType("IN");
@@ -243,7 +233,7 @@ public class StockService {
     }
 
     /* ============================================================
-       =====================  STOCK OUT  ===========================
+       ===================== STOCK OUT ============================
        ============================================================ */
 
     public String stockOut(StockOutRequestDTO dto) {
@@ -277,6 +267,10 @@ public class StockService {
         item.setQuantity(dto.getQuantity());
         item.setSellingPrice(variant.getSellingPrice());
         item.setFinalPrice(dto.getFinalPrice());
+
+        // ✅ FIX 3: Save threshold price at sale
+        item.setThresholdPriceAtSale(variant.getCostPrice());
+
         item.setCustomer(customer);
         saleItemRepo.save(item);
 
@@ -293,12 +287,13 @@ public class StockService {
     }
 
     /* ============================================================
-       =====================  SKU GENERATOR  ======================
+       ===================== SKU GENERATOR ========================
        ============================================================ */
 
-    private String generateSku(Product product,
-                               List<Long> attributeValueIds) {
-    	Long customerId = jwtUtil.getRequiredCustomerId();
+    private String generateSku(Product product, List<Long> attributeValueIds) {
+
+        Long customerId = jwtUtil.getRequiredCustomerId();
+
         if (product.getCode() == null || product.getCode().isBlank()) {
             throw new RuntimeException("Product code must be defined.");
         }
@@ -308,8 +303,14 @@ public class StockService {
 
         if (attributeValueIds != null && !attributeValueIds.isEmpty()) {
 
-        	List<AttributeValue> values =
-        		    attributeValueRepo.findByIdInAndCustomer_Id(attributeValueIds, customerId);
+            List<AttributeValue> values =
+                    attributeValueRepo.findByIdInAndCustomer_Id(attributeValueIds, customerId);
+
+            // ✅ FIX 1: Validate count
+            if (values.size() != attributeValueIds.size()) {
+                throw new RuntimeException("Invalid attribute values selected.");
+            }
+
             values.stream()
                     .sorted(Comparator.comparing(v -> v.getAttribute().getId()))
                     .forEach(value -> {
@@ -325,16 +326,14 @@ public class StockService {
 
         return skuBuilder.toString();
     }
-    
+
     private String generateProductCode(String name, Long customerId) {
 
         if (name == null || name.isBlank()) {
             throw new RuntimeException("Product name required.");
         }
 
-        // Remove spaces, uppercase
-        String base = name.replaceAll("[^A-Za-z]", "")
-                          .toUpperCase();
+        String base = name.replaceAll("[^A-Za-z]", "").toUpperCase();
 
         if (base.length() > 6) {
             base = base.substring(0, 6);
@@ -349,44 +348,5 @@ public class StockService {
         }
 
         return code;
-    }
-    public String deleteStockIn(Long purchaseId) {
-
-        Long customerId = jwtUtil.getRequiredCustomerId();
-
-        // 1️⃣ Get exact purchase
-        Purchase purchase = purchaseRepo
-                .findByIdAndCustomer_IdAndStatus(purchaseId, customerId, "ACTIVE")
-                .orElseThrow(() -> new RuntimeException("Purchase not found"));
-
-        ProductVariant variant = purchase.getProductVariant();
-
-        int purchaseQty = purchase.getQuantity();
-
-        // 2️⃣ Safety check
-        if (variant.getStockQty() < purchaseQty) {
-            throw new RuntimeException(
-                    "Cannot delete. Items already sold.");
-        }
-
-        // 3️⃣ Reverse stock
-        variant.setStockQty(variant.getStockQty() - purchaseQty);
-        variantRepo.save(variant);
-
-        // 4️⃣ Soft delete purchase
-        purchase.setStatus("DELETED");
-        purchaseRepo.save(purchase);
-
-        // 5️⃣ Soft delete exact movement
-        List<StockMovement> movements =
-                movementRepo.findByPurchase_PurchaseIdAndCustomer_Id(
-                        purchaseId, customerId);
-
-        for (StockMovement m : movements) {
-            m.setStatus("DELETED");
-            movementRepo.save(m);
-        }
-
-        return "Stock-in deleted successfully.";
     }
 }

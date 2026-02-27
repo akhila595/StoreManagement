@@ -118,4 +118,8 @@ public class StockInRequestDTO {
 	public void setRemarks(String remarks) {
 		this.remarks = remarks;
 	}
+	public Object getAttributeIds() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
