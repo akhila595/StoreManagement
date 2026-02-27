@@ -2,54 +2,83 @@ package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.ProductDTO;
 import com.shopmanagement.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
 
-    // --- CREATE Product ---
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> createProduct(@RequestBody ProductDTO productDTO) {
-        return ResponseEntity.ok(productService.createProduct(productDTO));
+    public ProductController(ProductService productService) {
+        this.productService = productService;
     }
 
-    // --- READ All Products ---
+    /* =========================================================
+       CREATE PRODUCT (With Image + Attributes)
+       ========================================================= */
+
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, Object>> createProduct(
+            @RequestPart("product") ProductDTO productDTO,
+            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
+
+        return ResponseEntity.ok(
+                productService.createProduct(productDTO, imageFile)
+        );
+    }
+
+    /* =========================================================
+       GET ALL PRODUCTS
+       ========================================================= */
+
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
-    // --- READ Product by ID ---
+    /* =========================================================
+       GET PRODUCT BY ID
+       ========================================================= */
+
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getProductById(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
+    public ResponseEntity<Map<String, Object>> getProductById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                productService.getProductById(id)
+        );
     }
 
-    // --- READ Product by Design Code ---
-    @GetMapping("/design/{designCode}")
-    public ResponseEntity<Map<String, Object>> getProductByDesignCode(@PathVariable("designCode") String designCode) {
-        return ResponseEntity.ok(productService.getProductByDesignCode(designCode));
-    }
+    /* =========================================================
+       UPDATE PRODUCT
+       ========================================================= */
 
-    // --- UPDATE Product ---
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     public ResponseEntity<Map<String, Object>> updateProduct(
-            @PathVariable("id") Long id,
-            @RequestBody ProductDTO productDTO) {
-        return ResponseEntity.ok(productService.updateProduct(id, productDTO));
+            @PathVariable Long id,
+            @RequestPart("product") ProductDTO productDTO,
+            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
+
+        return ResponseEntity.ok(
+                productService.updateProduct(id, productDTO, imageFile)
+        );
     }
 
-    // --- DELETE Product ---
+    /* =========================================================
+       DELETE PRODUCT (SOFT DELETE)
+       ========================================================= */
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(productService.deleteProduct(id));
+    public ResponseEntity<Map<String, Object>> deleteProduct(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                productService.deleteProduct(id)
+        );
     }
 }

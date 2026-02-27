@@ -19,7 +19,8 @@ public class DetailedDailyReportDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private Long customerId; // ✅ Added field
-
+   
+    
     // Getters & Setters
     public LocalDate getStartDate() {
         return startDate;

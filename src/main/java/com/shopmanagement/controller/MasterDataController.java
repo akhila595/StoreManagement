@@ -1,71 +1,116 @@
 package com.shopmanagement.controller;
 
+import com.shopmanagement.dto.AttributeDTO;
+import com.shopmanagement.dto.AttributeValueDTO;
 import com.shopmanagement.model.*;
+import com.shopmanagement.service.AttributeService;
+import com.shopmanagement.service.AttributeValueService;
 import com.shopmanagement.service.MasterDataService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api")  // Added versioning to API
+@RequestMapping("/api/master")
 public class MasterDataController {
 
-    @Autowired
-    private MasterDataService masterDataService;
+    private final MasterDataService masterDataService;
+    private final AttributeService attributeService ;
+    private final AttributeValueService attributeValueService;
 
-    // -------- Categories --------
+    public MasterDataController(MasterDataService masterDataService,AttributeService attributeService,AttributeValueService attributeValueService) {
+        this.masterDataService = masterDataService;
+		this.attributeService = attributeService;
+		this.attributeValueService = attributeValueService;
+    }
+
+    /* =========================================================
+       CATEGORY
+       ========================================================= */
+
     @GetMapping("/categories")
-    public List<Category> getAllCategories() {
-        return masterDataService.getAllCategories();
+    public ResponseEntity<List<Category>> getCategories() {
+        return ResponseEntity.ok(masterDataService.getAllCategories());
     }
 
-    @PostMapping("/categories/create")
-    public Category createCategory(@RequestBody Category category) {
-        return masterDataService.addCategory(category);  // renamed to `createCategory`
+    @PostMapping("/categories")
+    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
+        return ResponseEntity.ok(masterDataService.addCategory(category));
     }
 
-    // -------- Brands --------
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<String> deleteCategory(@PathVariable Long id) {
+        masterDataService.deleteCategory(id);
+        return ResponseEntity.ok("Category deleted successfully");
+    }
+
+    /* =========================================================
+       BRAND
+       ========================================================= */
+
     @GetMapping("/brands")
-    public List<Brand> getAllBrands() {
-        return masterDataService.getAllBrands();
+    public ResponseEntity<List<Brand>> getBrands() {
+        return ResponseEntity.ok(masterDataService.getAllBrands());
     }
 
-    @PostMapping("/brands/create")
-    public Brand createBrand(@RequestBody Brand brand) {
-        return masterDataService.addBrand(brand);  // renamed to `createBrand`
+    @PostMapping("/brands")
+    public ResponseEntity<Brand> createBrand(@RequestBody Brand brand) {
+        return ResponseEntity.ok(masterDataService.addBrand(brand));
     }
 
-    // -------- Cloth Types --------
-    @GetMapping("/cloth-types")
-    public List<ClothType> getAllClothTypes() {
-        return masterDataService.getAllClothTypes();
+    @DeleteMapping("/brands/{id}")
+    public ResponseEntity<String> deleteBrand(@PathVariable Long id) {
+        masterDataService.deleteBrand(id);
+        return ResponseEntity.ok("Brand deleted successfully");
     }
 
-    @PostMapping("/cloth-types/create")
-    public ClothType createClothType(@RequestBody ClothType clothType) {
-        return masterDataService.addClothType(clothType);  // renamed to `createClothType`
+    /* =========================================================
+       ATTRIBUTE
+       ========================================================= */
+
+    @GetMapping("/attributes")
+    public ResponseEntity<List<Attribute>> getAttributes() {
+        return ResponseEntity.ok(attributeService.getAllAttributes());
     }
 
-    // -------- Colors --------
-    @GetMapping("/colors")
-    public List<Color> getAllColors() {
-        return masterDataService.getAllColors();
+    @PostMapping("/attributes")
+    public ResponseEntity<Map<String, Object>> createAttribute(@RequestBody AttributeDTO attribute) {
+        return ResponseEntity.ok(attributeService.createAttribute(attribute));
     }
 
-    @PostMapping("/colors/create")
-    public Color createColor(@RequestBody Color color) {
-        return masterDataService.addColor(color);  // renamed to `createColor`
+    @DeleteMapping("/attributes/{id}")
+    public ResponseEntity<String> deleteAttribute(@PathVariable Long id) {
+    	attributeService.deleteAttribute(id);
+        return ResponseEntity.ok("Attribute deleted successfully");
     }
 
-    // -------- Sizes --------
-    @GetMapping("/sizes")
-    public List<Size> getAllSizes() {
-        return masterDataService.getAllSizes();
+    /* =========================================================
+       ATTRIBUTE VALUES
+       ========================================================= */
+
+    @GetMapping("/attribute-values/{attributeId}")
+    public ResponseEntity<List<AttributeValue>> getValuesByAttribute(
+            @PathVariable Long attributeId) {
+
+        return ResponseEntity.ok(
+        		attributeValueService.getValuesByAttribute(attributeId)
+        );
     }
 
-    @PostMapping("/sizes/create")
-    public Size createSize(@RequestBody Size size) {
-        return masterDataService.addSize(size);  // renamed to `createSize`
+    @PostMapping("/attribute-values")
+    public ResponseEntity<String> createAttributeValue(
+            @RequestBody AttributeValueDTO value) {
+
+        return ResponseEntity.ok(
+        		attributeValueService.createAttributeValue(value)
+        );
+    }
+
+    @DeleteMapping("/attribute-values/{id}")
+    public ResponseEntity<String> deleteAttributeValue(@PathVariable Long id) {
+    	attributeValueService.deleteAttributeValue(id);
+        return ResponseEntity.ok("Attribute value deleted successfully");
     }
 }

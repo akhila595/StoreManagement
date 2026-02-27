@@ -349,4 +349,84 @@ public class StockService {
 
         return code;
     }
+    public List<RecentStockInDTO> getRecentStockIns() {
+
+        Long customerId = jwtUtil.getRequiredCustomerId();
+
+        List<Purchase> purchases =
+                purchaseRepo.findTop10ByCustomer_IdAndStatusOrderByPurchaseDateDesc(
+                        customerId, "ACTIVE");
+
+        List<RecentStockInDTO> result = new ArrayList<>();
+
+        for (Purchase purchase : purchases) {
+
+            ProductVariant variant = purchase.getProductVariant();
+            if (variant == null) continue;
+
+            Product product = variant.getProduct();
+            if (product == null || "DELETED".equals(product.getStatus()))
+                continue;
+
+            RecentStockInDTO dto = new RecentStockInDTO();
+            dto.setProductName(product.getName());
+            dto.setSku(variant.getProductSku());
+            dto.setQuantityAdded(purchase.getQuantity());
+            dto.setSupplierName(
+                    purchase.getSupplier() != null
+                            ? purchase.getSupplier().getSupplierName()
+                            : "Unknown"
+            );
+            dto.setStockInDate(purchase.getPurchaseDate());
+            dto.setImageUrl(product.getImageUrl());
+            dto.setCustomerId(customerId);
+
+            result.add(dto);
+        }
+
+        return result;
+    }
+    
+    public List<RecentStockOutDTO> getRecentStockOuts() {
+
+        Long customerId = jwtUtil.getRequiredCustomerId();
+
+        List<StockMovement> movements =
+                movementRepo
+                    .findTop10ByMovementTypeAndCustomer_IdAndStatusOrderByMovementDateDesc(
+                            "OUT",
+                            customerId,
+                            "ACTIVE"
+                    );
+
+        List<RecentStockOutDTO> result = new ArrayList<>();
+
+        for (StockMovement movement : movements) {
+
+            ProductVariant variant = movement.getProductVariant();
+            if (variant == null) continue;
+
+            Product product = variant.getProduct();
+            if (product == null || "DELETED".equals(product.getStatus()))
+                continue;
+
+            RecentStockOutDTO dto = new RecentStockOutDTO();
+
+            dto.setProductName(product.getName());
+            dto.setSku(variant.getProductSku());
+            dto.setQuantityRemoved(movement.getQuantity());
+            dto.setReason(
+                    movement.getRemarks() != null
+                            ? movement.getRemarks()
+                            : "Sale"
+            );
+            dto.setStockOutDate(movement.getMovementDate());
+            dto.setImageUrl(product.getImageUrl());
+            dto.setCustomerId(customerId);
+
+            result.add(dto);
+        }
+
+        return result;
+    }
 }

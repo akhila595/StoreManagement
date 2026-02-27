@@ -6,9 +6,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.shopmanagement.model.StockMovement;
+
 @Repository
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
-	 List<StockMovement> findTop10ByMovementTypeOrderByMovementDateDesc(String movementType);
-	 List<StockMovement> findTop10ByMovementTypeAndCustomer_IdOrderByMovementDateDesc(String type, Long customerId);
+	List<StockMovement> findTop10ByMovementTypeOrderByMovementDateDesc(String movementType);
+
+	List<StockMovement> findTop10ByMovementTypeAndCustomer_IdOrderByMovementDateDesc(String type, Long customerId);
+
 	List<StockMovement> findByPurchase_PurchaseIdAndCustomer_Id(Long purchaseId, Long customerId);
+
+	List<StockMovement> findTop10ByMovementTypeAndCustomer_IdAndStatusOrderByMovementDateDesc(String movementType,
+			Long customerId, String status);
 }

@@ -10,14 +10,18 @@ public class RecentStockInDTO {
     private String supplierName;
     private LocalDate stockInDate;
     private String imageUrl;
-    private Long customerId; // ✅ Added for tenant context
+    private Long customerId; // tenant context
 
-    // ✅ Default constructor (important for frameworks & compatibility)
+    // Default constructor
     public RecentStockInDTO() {}
 
-    // ✅ Constructor without customerId (for backward compatibility)
-    public RecentStockInDTO(String productName, String sku, int quantityAdded,
-                            String supplierName, LocalDate stockInDate, String imageUrl) {
+    // Constructor without customerId (optional)
+    public RecentStockInDTO(String productName,
+                            String sku,
+                            int quantityAdded,
+                            String supplierName,
+                            LocalDate stockInDate,
+                            String imageUrl) {
         this.productName = productName;
         this.sku = sku;
         this.quantityAdded = quantityAdded;
@@ -26,9 +30,14 @@ public class RecentStockInDTO {
         this.imageUrl = imageUrl;
     }
 
-    // ✅ Full constructor (with customerId)
-    public RecentStockInDTO(String productName, String sku, int quantityAdded,
-                            String supplierName, LocalDate stockInDate, String imageUrl, Long customerId) {
+    // Full constructor
+    public RecentStockInDTO(String productName,
+                            String sku,
+                            int quantityAdded,
+                            String supplierName,
+                            LocalDate stockInDate,
+                            String imageUrl,
+                            Long customerId) {
         this.productName = productName;
         this.sku = sku;
         this.quantityAdded = quantityAdded;
@@ -38,10 +47,12 @@ public class RecentStockInDTO {
         this.customerId = customerId;
     }
 
-    // ✅ Getters and Setters
+    // Getters & Setters
+
     public String getProductName() {
         return productName;
     }
+
     public void setProductName(String productName) {
         this.productName = productName;
     }
@@ -49,6 +60,7 @@ public class RecentStockInDTO {
     public String getSku() {
         return sku;
     }
+
     public void setSku(String sku) {
         this.sku = sku;
     }
@@ -56,6 +68,7 @@ public class RecentStockInDTO {
     public int getQuantityAdded() {
         return quantityAdded;
     }
+
     public void setQuantityAdded(int quantityAdded) {
         this.quantityAdded = quantityAdded;
     }
@@ -63,6 +76,7 @@ public class RecentStockInDTO {
     public String getSupplierName() {
         return supplierName;
     }
+
     public void setSupplierName(String supplierName) {
         this.supplierName = supplierName;
     }
@@ -70,6 +84,7 @@ public class RecentStockInDTO {
     public LocalDate getStockInDate() {
         return stockInDate;
     }
+
     public void setStockInDate(LocalDate stockInDate) {
         this.stockInDate = stockInDate;
     }
@@ -77,6 +92,7 @@ public class RecentStockInDTO {
     public String getImageUrl() {
         return imageUrl;
     }
+
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
     }
@@ -84,6 +100,7 @@ public class RecentStockInDTO {
     public Long getCustomerId() {
         return customerId;
     }
+
     public void setCustomerId(Long customerId) {
         this.customerId = customerId;
     }

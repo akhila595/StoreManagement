@@ -24,5 +24,8 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
 	Optional<Purchase> findByIdAndCustomer_IdAndStatus(Long purchaseId, Long customerId, String string);
 	List<Purchase> findByPurchaseDateBetweenAndCustomer_IdAndStatus(LocalDate startDate, LocalDate endDate,
 			Long customerId, String string);
-
+	List<Purchase> findTop10ByCustomer_IdAndStatusOrderByPurchaseDateDesc(
+	        Long customerId,
+	        String status
+	);
 }
