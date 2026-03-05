@@ -7,14 +7,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.shopmanagement.model.SaleItem;
+
 @Repository
 public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
 
-	List<SaleItem> findBySaleInvoice_SaleDate(LocalDate saleDate);
+    List<SaleItem> findBySaleInvoice_SaleDate(LocalDate saleDate);
+
     List<SaleItem> findBySaleInvoice_SaleDateBetween(LocalDate start, LocalDate end);
+
     List<SaleItem> findBySaleInvoice_SaleDateAndCustomer_Id(LocalDate date, Long customerId);
-    List<SaleItem> findBySaleInvoice_SaleDateBetweenAndCustomer_Id(LocalDate start, LocalDate end, Long customerId);
-	List<SaleItem> findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(LocalDate startDate, LocalDate endDate,
-			Long customerId, String string);
-	List<SaleItem> findBySaleInvoice_SaleDateAndCustomer_IdAndStatus(LocalDate date, Long customerId, String string);
+
+    List<SaleItem> findBySaleInvoice_SaleDateBetweenAndCustomer_Id(
+            LocalDate start, LocalDate end, Long customerId);
+
+    List<SaleItem> findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndSaleInvoice_Status(
+            LocalDate startDate, LocalDate endDate, Long customerId, String status);
+
+    List<SaleItem> findBySaleInvoice_SaleDateAndCustomer_IdAndSaleInvoice_Status(
+            LocalDate date, Long customerId, String status);
 }

@@ -25,7 +25,7 @@ public class ProductAttributeService {
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         Product product = productRepository
-                .findByIdAndCustomer_Id(dto.getProductId(), customerId)
+                .findByProductIdAndCustomer_Id(dto.getProductId(), customerId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         Attribute attribute = attributeRepository
@@ -63,7 +63,7 @@ public class ProductAttributeService {
 
         List<ProductAttribute> list =
                 productAttributeRepository
-                        .findByProduct_ProductIdAndCustomer_Id(productId, customerId);
+                        .findByProduct_productIdAndCustomer_Id(productId, customerId);
 
         List<Attribute> attributes = new ArrayList<>();
 

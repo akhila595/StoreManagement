@@ -37,9 +37,9 @@ public class ReportService {
 
 		Long customerId = jwtUtils.getRequiredCustomerId();
 
-		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateAndCustomer_IdAndStatus(date, customerId,
-				"ACTIVE");
-
+		List<SaleItem> sales =saleItemRepo.findBySaleInvoice_SaleDateAndCustomer_IdAndSaleInvoice_Status(date, customerId, "ACTIVE");
+		
+		
 		return calculateReport(sales, date, customerId);
 	}
 
@@ -53,7 +53,7 @@ public class ReportService {
 
 		Long customerId = jwtUtils.getRequiredCustomerId();
 
-		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(month.atDay(1),
+		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndSaleInvoice_Status(month.atDay(1),
 				month.atEndOfMonth(), customerId, "ACTIVE");
 
 		DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
@@ -72,7 +72,7 @@ public class ReportService {
 
 		Long customerId = jwtUtils.getRequiredCustomerId();
 
-		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(startDate, endDate,
+		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndSaleInvoice_Status(startDate, endDate,
 				customerId, "ACTIVE");
 
 		Map<ProductVariant, Integer> variantQtyMap = new HashMap<>();
@@ -149,7 +149,7 @@ public class ReportService {
 
 		Long customerId = jwtUtils.getRequiredCustomerId();
 
-		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(startDate, endDate,
+		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndSaleInvoice_Status(startDate, endDate,
 				customerId, "ACTIVE");
 
 		Map<String, CategoryReportDTO> categoryMap = new HashMap<>();
@@ -321,7 +321,7 @@ public class ReportService {
 
 		Long customerId = jwtUtils.getRequiredCustomerId();
 
-		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndStatus(
+		List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndSaleInvoice_Status(
 				LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), customerId, "ACTIVE");
 
 		DetailedDailyReportDTO report = calculateReport(sales, null, customerId);

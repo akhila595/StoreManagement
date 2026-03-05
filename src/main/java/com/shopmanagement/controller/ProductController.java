@@ -12,73 +12,67 @@ import java.util.Map;
 @RequestMapping("/api/products")
 public class ProductController {
 
-    private final ProductService productService;
+	private final ProductService productService;
 
-    public ProductController(ProductService productService) {
-        this.productService = productService;
-    }
+	public ProductController(ProductService productService) {
+		this.productService = productService;
+	}
 
-    /* =========================================================
-       CREATE PRODUCT (With Image + Attributes)
-       ========================================================= */
+	/*
+	 * ========================================================= CREATE PRODUCT
+	 * (With Image + Attributes)
+	 * =========================================================
+	 */
 
-    @PostMapping(consumes = "multipart/form-data")
-    public ResponseEntity<Map<String, Object>> createProduct(
-            @RequestPart("product") ProductDTO productDTO,
-            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
+	@PostMapping(consumes = "multipart/form-data")
+	public ResponseEntity<Map<String, Object>> createProduct(@RequestPart("product") ProductDTO productDTO,
+			@RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
 
-        return ResponseEntity.ok(
-                productService.createProduct(productDTO, imageFile)
-        );
-    }
+		return ResponseEntity.ok(productService.createProduct(productDTO, imageFile));
+	}
 
-    /* =========================================================
-       GET ALL PRODUCTS
-       ========================================================= */
+	/*
+	 * ========================================================= GET ALL PRODUCTS
+	 * =========================================================
+	 */
 
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
-    }
+	@GetMapping
+	public ResponseEntity<Map<String, Object>> getAllProducts() {
+		return ResponseEntity.ok(productService.getAllProducts());
+	}
 
-    /* =========================================================
-       GET PRODUCT BY ID
-       ========================================================= */
+	/*
+	 * ========================================================= GET PRODUCT BY ID
+	 * =========================================================
+	 */
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getProductById(
-            @PathVariable Long id) {
+	@GetMapping("/{id}")
+	public ResponseEntity<Map<String, Object>> getProductById(@PathVariable Long id) {
 
-        return ResponseEntity.ok(
-                productService.getProductById(id)
-        );
-    }
+		return ResponseEntity.ok(productService.getProductById(id));
+	}
 
-    /* =========================================================
-       UPDATE PRODUCT
-       ========================================================= */
+	/*
+	 * ========================================================= UPDATE PRODUCT
+	 * =========================================================
+	 */
 
-    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
-    public ResponseEntity<Map<String, Object>> updateProduct(
-            @PathVariable Long id,
-            @RequestPart("product") ProductDTO productDTO,
-            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
+	@PutMapping(value = "/{id}", consumes = "multipart/form-data")
+	public ResponseEntity<Map<String, Object>> updateProduct(@PathVariable Long id,
+			@RequestPart("product") ProductDTO productDTO,
+			@RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
 
-        return ResponseEntity.ok(
-                productService.updateProduct(id, productDTO, imageFile)
-        );
-    }
+		return ResponseEntity.ok(productService.updateProduct(id, productDTO, imageFile));
+	}
 
-    /* =========================================================
-       DELETE PRODUCT (SOFT DELETE)
-       ========================================================= */
+	/*
+	 * ========================================================= DELETE PRODUCT
+	 * (SOFT DELETE) =========================================================
+	 */
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteProduct(
-            @PathVariable Long id) {
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable Long id) {
 
-        return ResponseEntity.ok(
-                productService.deleteProduct(id)
-        );
-    }
+		return ResponseEntity.ok(productService.deleteProduct(id));
+	}
 }

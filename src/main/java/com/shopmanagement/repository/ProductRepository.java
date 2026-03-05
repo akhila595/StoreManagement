@@ -13,10 +13,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     /* ================= BASIC FETCH ================= */
 
     // Fetch all products for logged-in customer
-    List<Product> findByCustomer_IdAndStatus(String status, Long customerId);
+    List<Product> findByCustomer_IdAndStatus( Long customerId,String status);
 
     // Fetch by ID (secure multi-tenant)
-    Optional<Product> findByIdAndCustomer_Id(Long productId, Long customerId);
+    Optional<Product> findByProductIdAndCustomer_Id(Long productId, Long customerId);
 
     /* ================= UNIQUE VALIDATIONS ================= */
 

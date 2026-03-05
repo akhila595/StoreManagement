@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface ProductAttributeRepository extends JpaRepository<ProductAttribute, Long> {
 
-    List<ProductAttribute> findByProduct_ProductIdAndCustomer_Id(
+    List<ProductAttribute> findByProduct_productIdAndCustomer_Id(
             Long productId, Long customerId);
 
     Optional<ProductAttribute> findByProduct_ProductIdAndAttribute_IdAndCustomer_Id(
@@ -16,7 +16,8 @@ public interface ProductAttributeRepository extends JpaRepository<ProductAttribu
 
     Optional<ProductAttribute> findByIdAndCustomer_Id(Long id, Long customerId);
 
-	List<ProductAttribute> findByProduct_IdAndCustomer_Id(Long productId, Long customerId);
-
 	void deleteByProduct_ProductIdAndCustomer_Id(Long id, Long customerId);
+	
 }
+
+

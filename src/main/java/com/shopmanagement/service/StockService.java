@@ -84,7 +84,7 @@ public class StockService {
 
         if (dto.getProductId() != null) {
 
-            product = productRepo.findByIdAndCustomer_Id(dto.getProductId(), customerId)
+            product = productRepo.findByProductIdAndCustomer_Id(dto.getProductId(), customerId)
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
             if ("DELETED".equals(product.getStatus())) {
@@ -116,7 +116,7 @@ public class StockService {
 
         // ATTRIBUTE VALIDATION
         List<ProductAttribute> productAttributes =
-                productAttributeRepo.findByProduct_IdAndCustomer_Id(product.getProductId(), customerId);
+                productAttributeRepo.findByProduct_productIdAndCustomer_Id(product.getProductId(), customerId);
 
         List<Long> selectedValueIds =
                 dto.getAttributeValueIds() != null ? dto.getAttributeValueIds() : new ArrayList<>();

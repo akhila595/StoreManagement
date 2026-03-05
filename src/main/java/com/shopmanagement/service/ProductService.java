@@ -155,7 +155,7 @@ public class ProductService {
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         List<ProductDTO> list = productRepository
-                .findByCustomer_IdAndStatus("ACTIVE",customerId)
+                .findByCustomer_IdAndStatus(customerId,"ACTIVE")
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -174,7 +174,7 @@ public class ProductService {
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         Product product = productRepository
-                .findByIdAndCustomer_Id(id, customerId)
+                .findByProductIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         return Map.of(
@@ -194,7 +194,7 @@ public class ProductService {
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         Product existing = productRepository
-                .findByIdAndCustomer_Id(id, customerId)
+                .findByProductIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         existing.setName(dto.getName());
@@ -243,7 +243,7 @@ public class ProductService {
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         Product product = productRepository
-                .findByIdAndCustomer_Id(id, customerId)
+                .findByProductIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         product.setStatus("DELETED");
