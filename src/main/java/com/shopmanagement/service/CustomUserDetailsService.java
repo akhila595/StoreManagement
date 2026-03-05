@@ -9,6 +9,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +24,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     // Load user by email (used during login)
     // ==========================================================
     @Override
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
         User user = userRepo.findByEmail(email)
@@ -35,6 +37,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     // ==========================================================
     // Load user by ID (used after decoding JWT)
     // ==========================================================
+    @Transactional(readOnly = true)
     public UserDetails loadUserById(Long userId)
             throws UsernameNotFoundException {
 
@@ -50,18 +53,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     // ==========================================================
     private UserDetails buildUserDetails(User user) {
 
-        // 🔥 1️⃣ Check user status
+        // 1️⃣ Check user status
         if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
             throw new UsernameNotFoundException("User is inactive or deleted");
         }
 
-        // 🔥 2️⃣ Check customer status
+        // 2️⃣ Check customer status
         if (user.getCustomer() == null ||
                 !"ACTIVE".equalsIgnoreCase(user.getCustomer().getStatus())) {
             throw new UsernameNotFoundException("Customer is inactive");
         }
 
-        // 🔥 3️⃣ Convert roles to authorities
+        // 3️⃣ Convert roles to authorities
         List<GrantedAuthority> authorities =
                 user.getRoles()
                         .stream()
@@ -70,15 +73,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
 
-        // 🔥 4️⃣ Use full Spring constructor with flags
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),                  // username
-                user.getPassword(),               // password
-                true,                             // enabled
-                true,                             // accountNonExpired
-                true,                             // credentialsNonExpired
-                true,                             // accountNonLocked
-                authorities
-        );
+        // 4️⃣ Build Spring Security user
+     // 4️⃣ Return CustomUserPrincipal instead of Spring User
+        return new CustomUserPrincipal(user, authorities);
     }
 }

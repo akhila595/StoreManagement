@@ -1,6 +1,7 @@
 package com.shopmanagement.service;
 
 import com.shopmanagement.dto.AttributeDTO;
+import com.shopmanagement.dto.AttributeResponseDTO;
 import com.shopmanagement.model.Attribute;
 import com.shopmanagement.model.Customer;
 import com.shopmanagement.repository.AttributeRepository;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -52,15 +54,26 @@ public class AttributeService {
 
         Attribute saved = attributeRepository.save(attribute);
 
-        return Map.of("message", "Attribute created", "data", saved);
+        AttributeResponseDTO response =
+                new AttributeResponseDTO(saved.getId(), saved.getName());
+
+        return Map.of(
+                "message", "Attribute created",
+                "data", response
+        );
     }
 
     /* ================= READ ================= */
 
     @Transactional(readOnly = true)
-    public List<Attribute> getAllAttributes() {
+    public List<AttributeResponseDTO> getAllAttributes() {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
-        return attributeRepository.findByCustomer_Id(customerId);
+
+        return attributeRepository.findByCustomer_Id(customerId)
+                .stream()
+                .map(a -> new AttributeResponseDTO(a.getId(), a.getName()))
+                .collect(Collectors.toList());
     }
 
     /* ================= UPDATE ================= */
@@ -75,7 +88,6 @@ public class AttributeService {
 
         String newName = dto.getName().trim();
 
-        // Prevent duplicate during update
         attributeRepository.findByNameAndCustomer_Id(newName, customerId)
                 .filter(a -> !a.getId().equals(id))
                 .ifPresent(a -> {
@@ -98,7 +110,7 @@ public class AttributeService {
                 .findByIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
-        attributeRepository.delete(attribute); // or soft delete if using status
+        attributeRepository.delete(attribute);
 
         return "Attribute deleted successfully";
     }

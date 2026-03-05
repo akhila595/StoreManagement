@@ -41,8 +41,8 @@ public class JwtUtil {
         claims.put("customerId", customerId);
 
         return Jwts.builder()
+        		.setClaims(claims)
                 .setSubject(userId.toString()) // 🔥 official subject
-                .setClaims(claims)
                 .setIssuer(issuer)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
@@ -56,8 +56,8 @@ public class JwtUtil {
     public Long extractUserId(String token) {
 
         Claims claims = parseToken(token).getBody();
-        return Long.valueOf(claims.getSubject());
-    }
+		return Long.valueOf(claims.getSubject());
+    } 
 
     // ==========================================================
     // 🔍 EXTRACT CUSTOMER ID

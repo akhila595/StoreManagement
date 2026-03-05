@@ -1,5 +1,7 @@
 package com.shopmanagement.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -26,6 +28,7 @@ public class AttributeValue {
     private String code;
     
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 

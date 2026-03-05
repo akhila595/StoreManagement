@@ -1,5 +1,6 @@
 package com.shopmanagement.service;
 
+import com.shopmanagement.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -7,21 +8,23 @@ import java.util.Collection;
 
 public class CustomUserPrincipal implements UserDetails {
 
-    private final Long userId;
-    private final Long customerId;
-    private final String email;
-    private final String password;
-    private final Collection<? extends GrantedAuthority> authorities;
+    private Long userId;
+    private Long customerId;
+    private String email;
+    private String password;
+    private Collection<? extends GrantedAuthority> authorities;
 
-    public CustomUserPrincipal(Long userId,
-                               Long customerId,
-                               String email,
-                               String password,
+    public CustomUserPrincipal(User user,
                                Collection<? extends GrantedAuthority> authorities) {
-        this.userId = userId;
-        this.customerId = customerId;
-        this.email = email;
-        this.password = password;
+
+        this.userId = user.getId();
+
+        if (user.getCustomer() != null) {
+            this.customerId = user.getCustomer().getId();
+        }
+
+        this.email = user.getEmail();
+        this.password = user.getPassword();
         this.authorities = authorities;
     }
 
@@ -32,10 +35,6 @@ public class CustomUserPrincipal implements UserDetails {
     public Long getCustomerId() {
         return customerId;
     }
-
-    // ===============================
-    // UserDetails methods
-    // ===============================
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

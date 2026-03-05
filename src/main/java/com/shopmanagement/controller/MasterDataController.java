@@ -1,6 +1,7 @@
 package com.shopmanagement.controller;
 
 import com.shopmanagement.dto.AttributeDTO;
+import com.shopmanagement.dto.AttributeResponseDTO;
 import com.shopmanagement.dto.AttributeValueDTO;
 import com.shopmanagement.model.*;
 import com.shopmanagement.service.AttributeService;
@@ -71,7 +72,7 @@ public class MasterDataController {
        ========================================================= */
 
     @GetMapping("/attributes")
-    public ResponseEntity<List<Attribute>> getAttributes() {
+    public ResponseEntity<List<AttributeResponseDTO>> getAttributes() {
         return ResponseEntity.ok(attributeService.getAllAttributes());
     }
 
