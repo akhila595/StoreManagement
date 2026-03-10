@@ -1,9 +1,11 @@
 package com.shopmanagement.dto;
 
+import java.util.List;
+
 public class AttributeValueDTO {
     private Long id;
     private Long attributeId;
-    private String value;
+    private List<String> values;
     private String code;
 	public Long getId() {
 		return id;
@@ -17,11 +19,12 @@ public class AttributeValueDTO {
 	public void setAttributeId(Long attributeId) {
 		this.attributeId = attributeId;
 	}
-	public String getValue() {
-		return value;
+	
+	public List<String> getValues() {
+		return values;
 	}
-	public void setValue(String value) {
-		this.value = value;
+	public void setValues(List<String> values) {
+		this.values = values;
 	}
 	public String getCode() {
 		return code;

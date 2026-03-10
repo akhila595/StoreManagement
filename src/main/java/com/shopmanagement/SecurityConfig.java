@@ -33,6 +33,7 @@ public class SecurityConfig {
                         // ✅ PUBLIC ENDPOINTS
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/uploads/**",  
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/public/**",

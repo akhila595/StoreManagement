@@ -105,7 +105,7 @@ public class MasterDataController {
             @RequestBody AttributeValueDTO value) {
 
         return ResponseEntity.ok(
-        		attributeValueService.createAttributeValue(value)
+        		attributeValueService.createAttributeValues(value)
         );
     }
 

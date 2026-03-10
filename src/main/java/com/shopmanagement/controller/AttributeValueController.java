@@ -25,13 +25,15 @@ public class AttributeValueController {
     @PostMapping
     public String create(@RequestBody AttributeValueDTO dto) {
 
-        return attributeValueService.createAttributeValue(dto);
+        return attributeValueService.createAttributeValues(dto);
+       
+        
     }
 
     /* ================= GET VALUES BY ATTRIBUTE ================= */
 
     @GetMapping("/attribute/{attributeId}")
-    public List<AttributeValueResponseDTO> getValues(@PathVariable Long attributeId) {
+    public List<AttributeValueResponseDTO> getValues(@PathVariable("attributeId") Long attributeId) {
 
         return attributeValueService.getValuesByAttribute(attributeId)
                 .stream()
@@ -46,17 +48,15 @@ public class AttributeValueController {
 
     /* ================= UPDATE ================= */
 
-    @PutMapping("/{id}")
-    public String update(@PathVariable Long id,
-                         @RequestBody AttributeValueDTO dto) {
-
-        return attributeValueService.updateAttributeValue(id, dto);
+    @PostMapping("/add")
+    public String addMoreValues(@RequestBody AttributeValueDTO dto) {
+        return attributeValueService.addValuesToAttribute(dto);
     }
 
     /* ================= DELETE ================= */
 
     @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id) {
+    public String delete(@PathVariable("id") Long id) {
 
         return attributeValueService.deleteAttributeValue(id);
     }

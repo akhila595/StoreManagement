@@ -36,7 +36,7 @@ public class AttributeController {
     /* ================= UPDATE ================= */
 
     @PutMapping("/{id}")
-    public String update(@PathVariable Long id,
+    public String update(@PathVariable("id") Long id,
                          @RequestBody AttributeDTO dto) {
 
         return attributeService.updateAttribute(id, dto);
@@ -45,7 +45,7 @@ public class AttributeController {
     /* ================= DELETE ================= */
 
     @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id) {
+    public String delete(@PathVariable("id")  Long id) {
         return attributeService.deleteAttribute(id);
     }
 }

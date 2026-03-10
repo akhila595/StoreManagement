@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 @Table(
     name = "attribute_values",
     uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"value", "attribute_id", "customer_id"})
+        @UniqueConstraint(columnNames = {"value", "attribute_id"})
     }
 )
 public class AttributeValue {
@@ -24,7 +24,7 @@ public class AttributeValue {
     @JoinColumn(name = "attribute_id", nullable = false)
     private Attribute attribute;
 
-    @Column(nullable = false)
+    @Column
     private String code;
     
     @ManyToOne(fetch = FetchType.LAZY)

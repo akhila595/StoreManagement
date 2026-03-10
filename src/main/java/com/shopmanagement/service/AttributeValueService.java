@@ -30,43 +30,52 @@ public class AttributeValueService {
 
     /* ================= CREATE ================= */
 
-    public String createAttributeValue(AttributeValueDTO dto) {
+
+    public String createAttributeValues(AttributeValueDTO dto) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        if (dto.getValue() == null || dto.getValue().trim().isEmpty()) {
-            throw new RuntimeException("Value cannot be empty.");
+        if (dto.getValues() == null || dto.getValues().isEmpty()) {
+            throw new RuntimeException("Values cannot be empty.");
         }
 
         Attribute attribute = attributeRepository
                 .findByIdAndCustomer_Id(dto.getAttributeId(), customerId)
                 .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
-        attributeValueRepository
-                .findByValueAndAttribute_IdAndCustomer_Id(
-                        dto.getValue().trim(),
-                        dto.getAttributeId(),
-                        customerId)
-                .ifPresent(v -> {
-                    throw new RuntimeException("Value already exists for this attribute.");
-                });
-
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        AttributeValue value = new AttributeValue();
-        value.setValue(dto.getValue().trim());
-        value.setCode(dto.getCode() != null
-                ? dto.getCode().trim().toUpperCase()
-                : null);
-        value.setAttribute(attribute);
-        value.setCustomer(customer);
+        for (String val : dto.getValues()) {
 
-        attributeValueRepository.save(value);
+            if (val == null || val.trim().isEmpty()) {
+                throw new RuntimeException("Attribute value cannot be empty");
+            }
 
-        return "Attribute value created successfully";
+            String value = val.trim();
+
+            attributeValueRepository
+                    .findByValueAndAttribute_IdAndCustomer_Id(
+                            value,
+                            dto.getAttributeId(),
+                            customerId)
+                    .ifPresent(v -> {
+                        throw new RuntimeException("Value already exists: " + value);
+                    });
+
+            AttributeValue attributeValue = new AttributeValue();
+            attributeValue.setValue(value);
+
+            attributeValue.setCode(generateCodeFromValue(value));
+
+            attributeValue.setAttribute(attribute);
+            attributeValue.setCustomer(customer);
+
+            attributeValueRepository.save(attributeValue);
+        }
+
+        return "Attribute values created successfully";
     }
-
     /* ================= READ ================= */
 
     @Transactional(readOnly = true)
@@ -80,25 +89,53 @@ public class AttributeValueService {
 
     /* ================= UPDATE ================= */
 
-    public String updateAttributeValue(Long id, AttributeValueDTO dto) {
+
+    public String addValuesToAttribute(AttributeValueDTO dto) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        AttributeValue value = attributeValueRepository
-                .findByIdAndCustomer_Id(id, customerId)
-                .orElseThrow(() -> new RuntimeException("Value not found"));
+        if (dto.getValues() == null || dto.getValues().isEmpty()) {
+            throw new RuntimeException("Values cannot be empty.");
+        }
 
-        value.setValue(dto.getValue().trim());
-        value.setCode(dto.getCode() != null
-                ? dto.getCode().trim().toUpperCase()
-                : null);
+        Attribute attribute = attributeRepository
+                .findByIdAndCustomer_Id(dto.getAttributeId(), customerId)
+                .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
-        attributeValueRepository.save(value);
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        return "Attribute value updated successfully";
+        for (String val : dto.getValues()) {
+
+            if (val == null || val.trim().isEmpty()) {
+                throw new RuntimeException("Value cannot be empty");
+            }
+
+            String value = val.trim();
+
+            attributeValueRepository
+                    .findByValueAndAttribute_IdAndCustomer_Id(
+                            value,
+                            dto.getAttributeId(),
+                            customerId)
+                    .ifPresent(v -> {
+                        throw new RuntimeException("Value already exists: " + value);
+                    });
+
+            AttributeValue attributeValue = new AttributeValue();
+            attributeValue.setValue(value);
+            attributeValue.setCode(generateCodeFromValue(value));
+            attributeValue.setAttribute(attribute);
+            attributeValue.setCustomer(customer);
+
+            attributeValueRepository.save(attributeValue);
+        }
+
+        return "Values added successfully";
     }
 
     /* ================= DELETE ================= */
+
 
     public String deleteAttributeValue(Long id) {
 
@@ -111,5 +148,14 @@ public class AttributeValueService {
         attributeValueRepository.delete(value);
 
         return "Attribute value deleted successfully";
+    }
+    
+    private String generateCodeFromValue(String value) {
+        String clean = value.trim().toUpperCase().replaceAll("\\s+", "");
+
+        if (clean.length() >= 2) {
+            return clean.substring(0, 2);
+        }
+        return clean;
     }
 }

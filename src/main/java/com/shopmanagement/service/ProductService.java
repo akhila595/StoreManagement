@@ -96,8 +96,7 @@ public class ProductService {
        ===================== CREATE ===============================
        ============================================================ */
 
-    public Map<String, Object> createProduct(ProductDTO dto,
-                                             MultipartFile imageFile) {
+    public Map<String, Object> createProduct(ProductDTO dto) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
@@ -134,10 +133,13 @@ public class ProductService {
             product.setCategory(category);
         }
 
-        if (imageFile != null && !imageFile.isEmpty()) {
-            product.setImageUrl(saveImage(imageFile));
-        }
+        if (dto.getImageUrl() != null && dto.getImageUrl().startsWith("/temp/")) {
 
+            String newPath = moveTempImageToProductFolder(dto.getImageUrl());
+
+            product.setImageUrl(newPath);
+        }
+        
         Product saved = productRepository.save(product);
         linkAttributesToProduct(saved, dto.getAttributeIds(), customer);
         return Map.of(
@@ -199,22 +201,11 @@ public class ProductService {
 
         existing.setName(dto.getName());
 
-        if (dto.getCode() != null && !dto.getCode().equals(existing.getCode())) {
-
-            productRepository.findByCodeAndCustomer_Id(dto.getCode(), customerId)
-                    .ifPresent(p -> {
-                        throw new RuntimeException("Product code already exists.");
-                    });
-
-            existing.setCode(dto.getCode());
-        }
-
         if (dto.getBrandId() != null) {
             Brand brand = brandRepository.findById(dto.getBrandId())
                     .orElseThrow(() -> new RuntimeException("Brand not found"));
             existing.setBrand(brand);
         }
-
         if (dto.getCategoryId() != null) {
             Category category = categoryRepository.findById(dto.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -301,6 +292,61 @@ public class ProductService {
             pa.setCustomer(customer);
 
             productAttributeRepository.save(pa);
+        }
+    }
+    
+    public String saveTempImage(MultipartFile file) {
+
+        try {
+
+            String ext = file.getOriginalFilename()
+                    .substring(file.getOriginalFilename().lastIndexOf("."));
+
+            String fileName = UUID.randomUUID() + ext;
+
+            Path tempDir = Paths.get(uploadImageDir, "temp/products");
+
+            if (!Files.exists(tempDir)) {
+                Files.createDirectories(tempDir);
+            }
+
+            Path filePath = tempDir.resolve(fileName);
+
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/temp/products/" + fileName;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Temp upload failed", e);
+        }
+    }
+    
+    private String moveTempImageToProductFolder(String tempPath) {
+
+        try {
+
+            Path tempFile = Paths.get(uploadImageDir, tempPath.replaceFirst("/", ""));
+
+            if (!Files.exists(tempFile)) {
+                throw new RuntimeException("Temp file not found: " + tempFile);
+            }
+
+            String fileName = tempFile.getFileName().toString();
+
+            Path productDir = Paths.get(uploadImageDir, "products");
+
+            if (!Files.exists(productDir)) {
+                Files.createDirectories(productDir);
+            }
+
+            Path finalPath = productDir.resolve(fileName);
+
+            Files.move(tempFile, finalPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/images/products/" + fileName;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to move image", e);
         }
     }
     

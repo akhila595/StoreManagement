@@ -24,11 +24,10 @@ public class ProductController {
 	 * =========================================================
 	 */
 
-	@PostMapping(consumes = "multipart/form-data")
-	public ResponseEntity<Map<String, Object>> createProduct(@RequestPart("product") ProductDTO productDTO,
-			@RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
+	@PostMapping
+	public ResponseEntity<Map<String, Object>> createProduct(@RequestBody ProductDTO productDTO) {
 
-		return ResponseEntity.ok(productService.createProduct(productDTO, imageFile));
+		return ResponseEntity.ok(productService.createProduct(productDTO));
 	}
 
 	/*
@@ -74,5 +73,16 @@ public class ProductController {
 	public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable Long id) {
 
 		return ResponseEntity.ok(productService.deleteProduct(id));
+	}
+	
+	@PostMapping("/uploads/temp-image")
+	public Map<String, Object> uploadTempImage(@RequestParam("file") MultipartFile file) {
+
+	    String tempPath = productService.saveTempImage(file);
+
+	    return Map.of(
+	            "message", "Image uploaded",
+	            "tempPath", tempPath
+	    );
 	}
 }
