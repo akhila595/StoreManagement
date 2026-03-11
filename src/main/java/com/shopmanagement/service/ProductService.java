@@ -190,8 +190,7 @@ public class ProductService {
        ============================================================ */
 
     public Map<String, Object> updateProduct(Long id,
-                                             ProductDTO dto,
-                                             MultipartFile imageFile) {
+                                             ProductDTO dto) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
@@ -212,8 +211,11 @@ public class ProductService {
             existing.setCategory(category);
         }
 
-        if (imageFile != null && !imageFile.isEmpty()) {
-            existing.setImageUrl(saveImage(imageFile));
+        if (dto.getImageUrl() != null && dto.getImageUrl().startsWith("/temp/")) {
+
+            String newPath = moveTempImageToProductFolder(dto.getImageUrl());
+
+            existing.setImageUrl(newPath);
         }
 
         Product updated = productRepository.save(existing);

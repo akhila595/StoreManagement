@@ -2,10 +2,12 @@ package com.shopmanagement.controller;
 
 import java.util.List;
 
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.shopmanagement.dto.RecentStockInDTO;
 import com.shopmanagement.dto.RecentStockOutDTO;
@@ -27,13 +29,12 @@ public class StockInController {
        STOCK IN
        ========================================================= */
 
-    @PostMapping(value = "/in", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping
     public ResponseEntity<String> addStock(
-            @RequestPart("data") StockInRequestDTO dto,
-            @RequestPart(value = "image", required = false) MultipartFile image) {
+            @RequestBody StockInRequestDTO dto) {
 
         return ResponseEntity.ok(
-                stockService.stockIn(dto, image)
+                stockService.stockIn(dto)
         );
     }
 

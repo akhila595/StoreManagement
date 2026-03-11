@@ -46,7 +46,7 @@ public class ProductController {
 	 */
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Map<String, Object>> getProductById(@PathVariable Long id) {
+	public ResponseEntity<Map<String, Object>> getProductById(@PathVariable("id") Long id) {
 
 		return ResponseEntity.ok(productService.getProductById(id));
 	}
@@ -56,12 +56,11 @@ public class ProductController {
 	 * =========================================================
 	 */
 
-	@PutMapping(value = "/{id}", consumes = "multipart/form-data")
-	public ResponseEntity<Map<String, Object>> updateProduct(@PathVariable Long id,
-			@RequestPart("product") ProductDTO productDTO,
-			@RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
+	@PutMapping(value = "/{id}")
+	public ResponseEntity<Map<String, Object>> updateProduct(@PathVariable("id") Long id,
+			@RequestBody ProductDTO productDTO) {
 
-		return ResponseEntity.ok(productService.updateProduct(id, productDTO, imageFile));
+		return ResponseEntity.ok(productService.updateProduct(id, productDTO));
 	}
 
 	/*
@@ -70,7 +69,7 @@ public class ProductController {
 	 */
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable Long id) {
+	public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable("id") Long id) {
 
 		return ResponseEntity.ok(productService.deleteProduct(id));
 	}
