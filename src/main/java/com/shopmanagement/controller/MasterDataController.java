@@ -3,6 +3,8 @@ package com.shopmanagement.controller;
 import com.shopmanagement.dto.AttributeDTO;
 import com.shopmanagement.dto.AttributeResponseDTO;
 import com.shopmanagement.dto.AttributeValueDTO;
+import com.shopmanagement.dto.BrandDTO;
+import com.shopmanagement.dto.CategoryDTO;
 import com.shopmanagement.model.*;
 import com.shopmanagement.service.AttributeService;
 import com.shopmanagement.service.AttributeValueService;
@@ -32,17 +34,17 @@ public class MasterDataController {
        ========================================================= */
 
     @GetMapping("/categories")
-    public ResponseEntity<List<Category>> getCategories() {
+    public ResponseEntity<List<CategoryDTO>>getCategories() {
         return ResponseEntity.ok(masterDataService.getAllCategories());
     }
 
     @PostMapping("/categories")
-    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
+    public ResponseEntity<String> createCategory(@RequestBody Category category) {
         return ResponseEntity.ok(masterDataService.addCategory(category));
     }
 
     @DeleteMapping("/categories/{id}")
-    public ResponseEntity<String> deleteCategory(@PathVariable Long id) {
+    public ResponseEntity<String> deleteCategory(@PathVariable("id") Long id) {
         masterDataService.deleteCategory(id);
         return ResponseEntity.ok("Category deleted successfully");
     }
@@ -52,17 +54,17 @@ public class MasterDataController {
        ========================================================= */
 
     @GetMapping("/brands")
-    public ResponseEntity<List<Brand>> getBrands() {
+    public ResponseEntity<List<BrandDTO>>getBrands() {
         return ResponseEntity.ok(masterDataService.getAllBrands());
     }
 
     @PostMapping("/brands")
-    public ResponseEntity<Brand> createBrand(@RequestBody Brand brand) {
+    public ResponseEntity<String> createBrand(@RequestBody Brand brand) {
         return ResponseEntity.ok(masterDataService.addBrand(brand));
     }
 
     @DeleteMapping("/brands/{id}")
-    public ResponseEntity<String> deleteBrand(@PathVariable Long id) {
+    public ResponseEntity<String> deleteBrand(@PathVariable("id") Long id) {
         masterDataService.deleteBrand(id);
         return ResponseEntity.ok("Brand deleted successfully");
     }

@@ -1,5 +1,7 @@
 package com.shopmanagement.service;
 
+import com.shopmanagement.dto.BrandDTO;
+import com.shopmanagement.dto.CategoryDTO;
 import com.shopmanagement.model.*;
 import com.shopmanagement.repository.*;
 
@@ -22,22 +24,30 @@ public class MasterDataService {
        ===================== CATEGORY ============================
        ========================================================== */
 
-    public List<Category> getAllCategories() {
+    public List<CategoryDTO> getAllCategories() {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        return categoryRepository
+        List<Category> categories   = categoryRepository
                 .findByCustomer_IdAndStatus(customerId, "ACTIVE");
+         
+         return categories.stream().map(category -> {
+             CategoryDTO dto = new CategoryDTO();
+             dto.setCategoryId(category.getCategoryId());
+             dto.setCategoryName(category.getCategoryName());
+             dto.setStatus(category.getStatus());
+             dto.setCreatedAt(category.getCreatedAt());
+             return dto;
+         }).toList();
     }
 
-    public Category addCategory(Category category) {
+    public String addCategory(Category category) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        // Duplicate check
         categoryRepository
                 .findByCategoryNameAndCustomer_Id(category.getCategoryName(), customerId)
                 .ifPresent(c -> {
@@ -47,9 +57,11 @@ public class MasterDataService {
         category.setCustomer(customer);
         category.setStatus("ACTIVE");
 
-        return categoryRepository.save(category);
-    }
+        categoryRepository.save(category);   // ⭐ MISSING LINE
 
+        return "Category created successfully";
+    }
+    
     public String deleteCategory(Long categoryId) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
@@ -68,15 +80,22 @@ public class MasterDataService {
        ===================== BRAND ===============================
        ========================================================== */
 
-    public List<Brand> getAllBrands() {
+    public List<BrandDTO> getAllBrands() {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
-        return brandRepository
+        List<Brand> brands= brandRepository
                 .findByCustomer_IdAndStatus(customerId, "ACTIVE");
+         
+         return brands.stream().map(brand -> {
+             BrandDTO dto = new BrandDTO();
+             dto.setId(brand.getId());
+             dto.setBrand(brand.getBrand());
+             return dto;
+         }).toList();
     }
 
-    public Brand addBrand(Brand brand) {
+    public String addBrand(Brand brand) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
@@ -92,7 +111,9 @@ public class MasterDataService {
         brand.setCustomer(customer);
         brand.setStatus("ACTIVE");
 
-        return brandRepository.save(brand);
+        brandRepository.save(brand);   // ⭐ MISSING LINE
+
+        return "Brand created successfully";
     }
 
     public String deleteBrand(Long brandId) {

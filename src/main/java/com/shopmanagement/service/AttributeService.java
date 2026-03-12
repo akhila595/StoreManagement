@@ -86,6 +86,10 @@ public class AttributeService {
                 .findByIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Attribute not found"));
 
+        if (dto.getName() == null || dto.getName().isBlank()) {
+            throw new RuntimeException("Attribute name cannot be empty");
+        }
+
         String newName = dto.getName().trim();
 
         attributeRepository.findByNameAndCustomer_Id(newName, customerId)
@@ -95,6 +99,7 @@ public class AttributeService {
                 });
 
         attribute.setName(newName);
+
         attributeRepository.save(attribute);
 
         return "Attribute updated successfully";

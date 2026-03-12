@@ -28,11 +28,19 @@ public class PermissionService {
 
     @Transactional
     public Permission update(Long id, Permission p) {
+
         Permission existing = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Permission not found"));
-        existing.setCode(p.getCode());
-        existing.setName(p.getName());
-        existing.setDescription(p.getDescription());
+
+        if (p.getCode() != null)
+            existing.setCode(p.getCode());
+
+        if (p.getName() != null)
+            existing.setName(p.getName());
+
+        if (p.getDescription() != null)
+            existing.setDescription(p.getDescription());
+
         return repo.save(existing);
     }
 

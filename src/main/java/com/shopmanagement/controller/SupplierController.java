@@ -22,12 +22,12 @@ public class SupplierController {
     }
 
     @PostMapping
-    public Supplier createSupplier(@RequestBody SupplierDTO dto) {
+    public SupplierDTO  createSupplier(@RequestBody SupplierDTO dto) {
         return supplierService.saveOrUpdate(dto);
     }
 
     @PutMapping("/{id}")
-    public Supplier updateSupplier(@PathVariable("id") Long id, @RequestBody SupplierDTO dto) {
+    public SupplierDTO  updateSupplier(@PathVariable("id") Long id, @RequestBody SupplierDTO dto) {
         dto.setSupplierId(id);
         return supplierService.saveOrUpdate(dto);
     }

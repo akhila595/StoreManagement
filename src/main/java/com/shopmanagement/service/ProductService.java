@@ -189,8 +189,7 @@ public class ProductService {
        ===================== UPDATE ===============================
        ============================================================ */
 
-    public Map<String, Object> updateProduct(Long id,
-                                             ProductDTO dto) {
+    public Map<String, Object> updateProduct(Long id, ProductDTO dto) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
@@ -198,13 +197,15 @@ public class ProductService {
                 .findByProductIdAndCustomer_Id(id, customerId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        existing.setName(dto.getName());
+        if (dto.getName() != null)
+            existing.setName(dto.getName());
 
         if (dto.getBrandId() != null) {
             Brand brand = brandRepository.findById(dto.getBrandId())
                     .orElseThrow(() -> new RuntimeException("Brand not found"));
             existing.setBrand(brand);
         }
+
         if (dto.getCategoryId() != null) {
             Category category = categoryRepository.findById(dto.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -219,8 +220,12 @@ public class ProductService {
         }
 
         Product updated = productRepository.save(existing);
-        productAttributeRepository.deleteByProduct_ProductIdAndCustomer_Id(id, customerId);
-        linkAttributesToProduct(existing, dto.getAttributeIds(), existing.getCustomer());
+
+        if (dto.getAttributeIds() != null) {
+            productAttributeRepository.deleteByProduct_ProductIdAndCustomer_Id(id, customerId);
+            linkAttributesToProduct(existing, dto.getAttributeIds(), existing.getCustomer());
+        }
+
         return Map.of(
                 "message", "Product updated successfully",
                 "data", mapToDTO(updated)

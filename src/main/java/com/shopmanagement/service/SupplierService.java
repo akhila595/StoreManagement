@@ -29,7 +29,7 @@ public class SupplierService {
     }
 
     /** ✅ Save or update supplier (scoped to customer) */
-    public Supplier saveOrUpdate(SupplierDTO dto) {
+    public SupplierDTO  saveOrUpdate(SupplierDTO dto) {
         Long customerId = jwtUtil.getRequiredCustomerId();
 
         Supplier supplier;
@@ -56,7 +56,22 @@ public class SupplierService {
         supplier.setPaymentTerms(dto.getPaymentTerms());
         supplier.setNotes(dto.getNotes());
 
-        return supplierRepository.save(supplier);
+        Supplier savedSupplier = supplierRepository.save(supplier);
+
+        // ✅ Convert Entity → DTO
+        SupplierDTO response = new SupplierDTO();
+        response.setSupplierId(savedSupplier.getSupplierId());
+        response.setSupplierName(savedSupplier.getSupplierName());
+        response.setContactPerson(savedSupplier.getContactPerson());
+        response.setPhoneNumber(savedSupplier.getPhoneNumber());
+        response.setWhatsApp(savedSupplier.getWhatsApp());
+        response.setEmail(savedSupplier.getEmail());
+        response.setAddress(savedSupplier.getAddress());
+        response.setGstNumber(savedSupplier.getGstNumber());
+        response.setPaymentTerms(savedSupplier.getPaymentTerms());
+        response.setNotes(savedSupplier.getNotes());
+
+        return response;
     }
 
     /** ✅ Delete supplier (scoped to customer) */

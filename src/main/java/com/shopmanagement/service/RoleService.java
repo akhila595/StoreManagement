@@ -87,9 +87,11 @@ public class RoleService {
 
     @Transactional
     public RoleDTO update(Long id, RoleDTO dto) {
+
         Long customerId = jwtUtils.getRequiredCustomerId();
 
         Role role;
+
         if (customerId == null) {
             role = roleRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("Role not found"));
@@ -98,9 +100,14 @@ public class RoleService {
                     .orElseThrow(() -> new RuntimeException("Role not found or unauthorized access"));
         }
 
-        role.setName(dto.getName());
-        role.setDescription(dto.getDescription());
-        role.setPermissions(fetchPermissions(dto.getPermissionIds()));
+        if (dto.getName() != null)
+            role.setName(dto.getName());
+
+        if (dto.getDescription() != null)
+            role.setDescription(dto.getDescription());
+
+        if (dto.getPermissionIds() != null)
+            role.setPermissions(fetchPermissions(dto.getPermissionIds()));
 
         return toDTO(roleRepo.save(role));
     }

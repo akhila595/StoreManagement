@@ -127,24 +127,33 @@ public class CustomerService {
     /* ==========================================================
        UPDATE CUSTOMER
        ========================================================== */
-
     @Transactional
     public CustomerDTO updateCustomer(Long id, Customer updated) {
 
         Customer customer = customerRepository.findByIdAndStatus(id, "ACTIVE")
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        // 🔥 Protect email uniqueness
-        if (!customer.getEmail().equals(updated.getEmail()) &&
+        if (updated.getEmail() != null &&
+                !customer.getEmail().equals(updated.getEmail()) &&
                 customerRepository.existsByEmail(updated.getEmail())) {
+
             throw new RuntimeException("Email already in use.");
         }
 
-        customer.setCustomerName(updated.getCustomerName());
-        customer.setEmail(updated.getEmail());
-        customer.setPhone(updated.getPhone());
-        customer.setAddress(updated.getAddress());
-        customer.setGstNumber(updated.getGstNumber());
+        if (updated.getCustomerName() != null)
+            customer.setCustomerName(updated.getCustomerName());
+
+        if (updated.getEmail() != null)
+            customer.setEmail(updated.getEmail());
+
+        if (updated.getPhone() != null)
+            customer.setPhone(updated.getPhone());
+
+        if (updated.getAddress() != null)
+            customer.setAddress(updated.getAddress());
+
+        if (updated.getGstNumber() != null)
+            customer.setGstNumber(updated.getGstNumber());
 
         customer = customerRepository.save(customer);
 
