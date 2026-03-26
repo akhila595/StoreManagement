@@ -103,7 +103,6 @@ public class ReportsController {
 
 	/*
 	 * ========================================================= YEARLY REPORT
-	 * =========================================================
 	 */
 
 	@GetMapping("/yearly")
@@ -111,4 +110,12 @@ public class ReportsController {
 
 		return ResponseEntity.ok(reportService.getYearlyReport(year));
 	}
+
+	@GetMapping("/weekly")
+	public ResponseEntity<DetailedDailyReportDTO> getWeeklyReport(
+			@RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+		return ResponseEntity.ok( reportService.getWeeklyReport(startDate, endDate));
+	}
+
 }

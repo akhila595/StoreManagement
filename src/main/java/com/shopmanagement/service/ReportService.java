@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.shopmanagement.dto.*;
@@ -330,4 +331,16 @@ public class ReportService {
 
 		return report;
 	}
+	
+	
+	public DetailedDailyReportDTO getWeeklyReport(LocalDate startDate, LocalDate endDate) {
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<SaleItem> sales = saleItemRepo.findBySaleInvoice_SaleDateBetweenAndCustomer_IdAndSaleInvoice_Status(startDate, endDate, customerId,"ACTIVE");
+
+        DetailedDailyReportDTO report = calculateReport(sales, null, customerId);
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        return report;
+    }
 }

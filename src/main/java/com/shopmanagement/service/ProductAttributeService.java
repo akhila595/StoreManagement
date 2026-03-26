@@ -1,5 +1,6 @@
 package com.shopmanagement.service;
 
+import com.shopmanagement.dto.AttributeDTO;
 import com.shopmanagement.dto.ProductAttributeDTO;
 import com.shopmanagement.model.*;
 import com.shopmanagement.repository.*;
@@ -57,7 +58,7 @@ public class ProductAttributeService {
 
     /* ================= GET PRODUCT ATTRIBUTES ================= */
 
-    public List<Attribute> getAttributesOfProduct(Long productId) {
+    public List<AttributeDTO> getAttributesOfProduct(Long productId) {
 
         Long customerId = jwtUtils.getRequiredCustomerId();
 
@@ -65,13 +66,20 @@ public class ProductAttributeService {
                 productAttributeRepository
                         .findByProduct_productIdAndCustomer_Id(productId, customerId);
 
-        List<Attribute> attributes = new ArrayList<>();
+        List<AttributeDTO> result = new ArrayList<>();
 
         for (ProductAttribute pa : list) {
-            attributes.add(pa.getAttribute());
-        }
 
-        return attributes;
+            Attribute attr = pa.getAttribute();
+
+            AttributeDTO dto = new AttributeDTO();
+            dto.setId(attr.getId());
+            dto.setName(attr.getName());
+
+            result.add(dto);
+        }
+        return result; 
+        
     }
 
     /* ================= REMOVE ATTRIBUTE FROM PRODUCT ================= */
