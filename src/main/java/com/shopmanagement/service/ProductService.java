@@ -1,8 +1,15 @@
 package com.shopmanagement.service;
 
-import com.shopmanagement.dto.ProductDTO;
-import com.shopmanagement.model.*;
-import com.shopmanagement.repository.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,10 +17,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.*;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.shopmanagement.dto.ProductDTO;
+import com.shopmanagement.dto.ProductVariantDTO;
+import com.shopmanagement.model.Attribute;
+import com.shopmanagement.model.Brand;
+import com.shopmanagement.model.Category;
+import com.shopmanagement.model.Customer;
+import com.shopmanagement.model.Product;
+import com.shopmanagement.model.ProductAttribute;
+import com.shopmanagement.model.ProductVariant;
+import com.shopmanagement.repository.AttributeRepository;
+import com.shopmanagement.repository.BrandRepository;
+import com.shopmanagement.repository.CategoryRepository;
+import com.shopmanagement.repository.CustomerRepository;
+import com.shopmanagement.repository.ProductAttributeRepository;
+import com.shopmanagement.repository.ProductRepository;
+import com.shopmanagement.repository.ProductVariantRepository;
 
 @Service
 @Transactional
@@ -26,6 +45,7 @@ public class ProductService {
     @Autowired private JwtUtils jwtUtils;
     @Autowired private AttributeRepository attributeRepository;
     @Autowired private ProductAttributeRepository productAttributeRepository;
+    @Autowired private ProductVariantRepository variantRepo;
 
     @Value("${app.upload.image-dir}")
     private String uploadImageDir;
@@ -355,6 +375,24 @@ public class ProductService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to move image", e);
         }
+    }
+    
+    public List<ProductVariantDTO> getVariantsByProduct(Long productId) {
+
+    	Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<ProductVariant> variants =
+                variantRepo.findByProduct_ProductIdAndCustomer_Id(productId, customerId);
+
+        return variants.stream()
+                .map(v -> new ProductVariantDTO(
+                        v.getVariantId(),
+                        v.getProductSku(),
+                        v.getSellingPrice(),
+                        v.getCostPrice(),
+                        v.getStockQty()
+                ))
+                .toList();
     }
     
 }

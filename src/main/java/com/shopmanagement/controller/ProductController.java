@@ -1,18 +1,30 @@
 package com.shopmanagement.controller;
 
-import com.shopmanagement.dto.ProductDTO;
-import com.shopmanagement.service.ProductService;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Map;
+import com.shopmanagement.dto.ProductDTO;
+import com.shopmanagement.dto.ProductVariantDTO;
+import com.shopmanagement.service.ProductService;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
 
 	private final ProductService productService;
+	
 
 	public ProductController(ProductService productService) {
 		this.productService = productService;
@@ -82,6 +94,15 @@ public class ProductController {
 	    return Map.of(
 	            "message", "Image uploaded",
 	            "tempPath", tempPath
+	    );
+	}
+	
+	@GetMapping("/variants/{productId}")
+	public ResponseEntity<List<ProductVariantDTO>> getVariants(
+	        @PathVariable("productId") Long productId) {
+
+	    return ResponseEntity.ok(
+	    		productService.getVariantsByProduct(productId)
 	    );
 	}
 }

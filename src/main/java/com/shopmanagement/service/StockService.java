@@ -31,7 +31,8 @@ public class StockService {
     /* ============================================================
        ===================== STOCK IN =============================
        ============================================================ */
-
+      //Discount = sellingPrice - finalPrice
+    @Transactional
     public String stockIn(StockInRequestDTO dto) {
 
         Long customerId = jwtUtil.getRequiredCustomerId();
@@ -130,6 +131,7 @@ public class StockService {
        ===================== STOCK OUT ============================
        ============================================================ */
 
+    @Transactional
     public String stockOut(StockOutRequestDTO dto) {
 
         Long customerId = jwtUtil.getRequiredCustomerId();
