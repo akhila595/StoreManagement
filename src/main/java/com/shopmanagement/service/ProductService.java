@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.shopmanagement.dto.ProductDTO;
 import com.shopmanagement.dto.ProductVariantDTO;
 import com.shopmanagement.model.Attribute;
+import com.shopmanagement.model.AttributeValue;
 import com.shopmanagement.model.Brand;
 import com.shopmanagement.model.Category;
 import com.shopmanagement.model.Customer;
@@ -27,12 +28,14 @@ import com.shopmanagement.model.Product;
 import com.shopmanagement.model.ProductAttribute;
 import com.shopmanagement.model.ProductVariant;
 import com.shopmanagement.repository.AttributeRepository;
+import com.shopmanagement.repository.AttributeValueRepository;
 import com.shopmanagement.repository.BrandRepository;
 import com.shopmanagement.repository.CategoryRepository;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.ProductAttributeRepository;
 import com.shopmanagement.repository.ProductRepository;
 import com.shopmanagement.repository.ProductVariantRepository;
+import java.util.Arrays;
 
 @Service
 @Transactional
@@ -46,6 +49,7 @@ public class ProductService {
     @Autowired private AttributeRepository attributeRepository;
     @Autowired private ProductAttributeRepository productAttributeRepository;
     @Autowired private ProductVariantRepository variantRepo;
+    @Autowired private AttributeValueRepository attributeValueRepo;
 
     @Value("${app.upload.image-dir}")
     private String uploadImageDir;
@@ -379,20 +383,45 @@ public class ProductService {
     
     public List<ProductVariantDTO> getVariantsByProduct(Long productId) {
 
-    	Long customerId = jwtUtils.getRequiredCustomerId();
+        Long customerId = jwtUtils.getRequiredCustomerId();
 
         List<ProductVariant> variants =
                 variantRepo.findByProduct_ProductIdAndCustomer_Id(productId, customerId);
 
         return variants.stream()
-                .map(v -> new ProductVariantDTO(
-                        v.getVariantId(),
-                        v.getProductSku(),
-                        v.getSellingPrice(),
-                        v.getCostPrice(),
-                        v.getStockQty()
-                ))
+                .map(v -> {
+
+                    String sku = v.getProductSku();
+                    String variantLabel = sku;
+
+                    if (sku != null && sku.contains("-")) {
+
+                        String[] parts = sku.split("-");
+
+                        // remove product code
+                        List<String> attributeCodes = Arrays.asList(parts).subList(1, parts.length);
+
+                        List<AttributeValue> values =
+                                attributeValueRepo.findAll().stream()
+                                        .filter(val -> attributeCodes.contains(val.getCode()))
+                                        .toList();
+
+                        if (!values.isEmpty()) {
+                            variantLabel = values.stream()
+                                    .map(AttributeValue::getValue)
+                                    .collect(Collectors.joining(" - "));
+                        }
+                    }
+
+                    return new ProductVariantDTO(
+                            v.getVariantId(),
+                            sku,
+                            v.getSellingPrice(),
+                            v.getCostPrice(),
+                            variantLabel,
+                            v.getStockQty()
+                    );
+                })
                 .toList();
     }
-    
 }

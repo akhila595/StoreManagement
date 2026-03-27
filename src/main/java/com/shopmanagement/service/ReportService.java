@@ -226,6 +226,8 @@ public class ReportService {
 	 * ==========================================================
 	 * ===================== COMMON REPORT LOGIC =================
 	 * ==========================================================
+	 * Total Sales = Σ (finalPrice × quantity)
+	 * profit = saleTotal - costTotal
 	 */
 
 	private DetailedDailyReportDTO calculateReport(List<SaleItem> sales, LocalDate date, Long customerId) {

@@ -4,62 +4,81 @@ import java.math.BigDecimal;
 
 public class ProductVariantDTO {
 
-    private Long variantId;
-    private String sku;
-    private BigDecimal sellingPrice;
-    private BigDecimal costPrice;
-    private Integer stockQty;
+	private Long variantId;
+	private String sku;
+	private BigDecimal sellingPrice;
+	private BigDecimal costPrice;
+	private Integer stockQty;
+	private String variantLabel; // 👈 new field
 
-    public ProductVariantDTO() {}
+	public ProductVariantDTO() {
+	}
 
-    public ProductVariantDTO(Long variantId, String sku,
-                             BigDecimal sellingPrice,
-                             BigDecimal costPrice,
-                             Integer stockQty) {
-        this.variantId = variantId;
-        this.sku = sku;
-        this.sellingPrice = sellingPrice;
-        this.costPrice = costPrice;
-        this.stockQty = stockQty;
-    }
+	public ProductVariantDTO(Long variantId, String sku, BigDecimal sellingPrice, BigDecimal costPrice,
+			String variantLabel, Integer stockQty) {
+		this.variantId = variantId;
+		this.sku = sku;
+		this.sellingPrice = sellingPrice;
+		this.costPrice = costPrice;
+		this.stockQty = stockQty;
+		this.variantLabel = variantLabel;
+	}
 
-    public Long getVariantId() {
-        return variantId;
-    }
+	public ProductVariantDTO(Long variantId, String sku, BigDecimal sellingPrice, BigDecimal costPrice,
+			Integer stockQty) {
+		this.variantId = variantId;
+		this.sku = sku;
+		this.sellingPrice = sellingPrice;
+		this.costPrice = costPrice;
+		this.stockQty = stockQty;
 
-    public void setVariantId(Long variantId) {
-        this.variantId = variantId;
-    }
+	}
 
-    public String getSku() {
-        return sku;
-    }
+	public Long getVariantId() {
+		return variantId;
+	}
 
-    public void setSku(String sku) {
-        this.sku = sku;
-    }
+	public void setVariantId(Long variantId) {
+		this.variantId = variantId;
+	}
 
-    public BigDecimal getSellingPrice() {
-        return sellingPrice;
-    }
+	public String getSku() {
+		return sku;
+	}
 
-    public void setSellingPrice(BigDecimal sellingPrice) {
-        this.sellingPrice = sellingPrice;
-    }
+	public void setSku(String sku) {
+		this.sku = sku;
+	}
 
-    public BigDecimal getCostPrice() {
-        return costPrice;
-    }
+	public BigDecimal getSellingPrice() {
+		return sellingPrice;
+	}
 
-    public void setCostPrice(BigDecimal costPrice) {
-        this.costPrice = costPrice;
-    }
+	public void setSellingPrice(BigDecimal sellingPrice) {
+		this.sellingPrice = sellingPrice;
+	}
 
-    public Integer getStockQty() {
-        return stockQty;
-    }
+	public BigDecimal getCostPrice() {
+		return costPrice;
+	}
 
-    public void setStockQty(Integer stockQty) {
-        this.stockQty = stockQty;
-    }
+	public void setCostPrice(BigDecimal costPrice) {
+		this.costPrice = costPrice;
+	}
+
+	public Integer getStockQty() {
+		return stockQty;
+	}
+
+	public String getVariantLabel() {
+		return variantLabel;
+	}
+
+	public void setVariantLabel(String variantLabel) {
+		this.variantLabel = variantLabel;
+	}
+
+	public void setStockQty(Integer stockQty) {
+		this.stockQty = stockQty;
+	}
 }

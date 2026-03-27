@@ -195,6 +195,7 @@ public class StockService {
 
     /* ============================================================
        ===================== SKU GENERATOR ========================
+       productCode + attributeValueCodes
        ============================================================ */
 
     private String generateSku(Product product, List<Long> attributeValueIds) {
