@@ -1,10 +1,22 @@
 package com.shopmanagement.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.shopmanagement.dto.AttributeDTO;
+import com.shopmanagement.dto.AttributeReportDTO;
 import com.shopmanagement.dto.AttributeResponseDTO;
+import com.shopmanagement.dto.AttributeValueDTO;
+import com.shopmanagement.dto.AttributeWithValuesDTO;
 import com.shopmanagement.model.Attribute;
+import com.shopmanagement.model.AttributeValue;
 import com.shopmanagement.model.Customer;
 import com.shopmanagement.repository.AttributeRepository;
+import com.shopmanagement.repository.AttributeValueRepository;
 import com.shopmanagement.repository.CustomerRepository;
 
 import org.springframework.stereotype.Service;
@@ -20,13 +32,16 @@ public class AttributeService {
 
     private final AttributeRepository attributeRepository;
     private final CustomerRepository customerRepository;
+    private final AttributeValueRepository attributeValueRepository;
     private final JwtUtils jwtUtils;
 
     public AttributeService(AttributeRepository attributeRepository,
                             CustomerRepository customerRepository,
+                            AttributeValueRepository attributeValueRepository,
                             JwtUtils jwtUtils) {
         this.attributeRepository = attributeRepository;
         this.customerRepository = customerRepository;
+        this.attributeValueRepository = attributeValueRepository;
         this.jwtUtils = jwtUtils;
     }
 
@@ -118,5 +133,31 @@ public class AttributeService {
         attributeRepository.delete(attribute);
 
         return "Attribute deleted successfully";
+    }
+   
+    @Transactional(readOnly = true)
+    public List<AttributeReportDTO> getAttributesWithValues() {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<Attribute> attributes = attributeRepository.findByCustomer_Id(customerId);
+
+        return attributes.stream().map(attribute -> {
+
+            List<AttributeValue> values =
+                    attributeValueRepository.findByAttribute_IdAndCustomer_Id(
+                            attribute.getId(), customerId);
+
+            List<String> valueNames = values.stream()
+                    .map(AttributeValue::getValue)
+                    .toList();
+
+            AttributeReportDTO dto = new AttributeReportDTO();
+            dto.setAttributeName(attribute.getName());
+            dto.setValues(valueNames);
+
+            return dto;
+
+        }).toList();
     }
 }

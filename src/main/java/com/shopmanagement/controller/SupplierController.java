@@ -17,7 +17,7 @@ public class SupplierController {
     private SupplierService supplierService;
 
     @GetMapping
-    public List<Supplier> getAll() {
+    public List<SupplierDTO> getAll() {
         return supplierService.getAllSuppliers();
     }
 

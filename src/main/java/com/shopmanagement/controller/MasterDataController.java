@@ -1,19 +1,29 @@
 package com.shopmanagement.controller;
 
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.shopmanagement.dto.AttributeDTO;
+import com.shopmanagement.dto.AttributeReportDTO;
 import com.shopmanagement.dto.AttributeResponseDTO;
 import com.shopmanagement.dto.AttributeValueDTO;
 import com.shopmanagement.dto.BrandDTO;
 import com.shopmanagement.dto.CategoryDTO;
-import com.shopmanagement.model.*;
+import com.shopmanagement.model.AttributeValue;
+import com.shopmanagement.model.Brand;
+import com.shopmanagement.model.Category;
 import com.shopmanagement.service.AttributeService;
 import com.shopmanagement.service.AttributeValueService;
 import com.shopmanagement.service.MasterDataService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/master")
@@ -116,4 +126,12 @@ public class MasterDataController {
     	attributeValueService.deleteAttributeValue(id);
         return ResponseEntity.ok("Attribute value deleted successfully");
     }
+    
+    @GetMapping("/attributes-with-values")
+    public ResponseEntity<List<AttributeReportDTO>> getAttributesWithValues() {
+        return ResponseEntity.ok(
+                attributeService.getAttributesWithValues()
+        );
+    }
+    
 }

@@ -5,82 +5,112 @@ import com.shopmanagement.model.Customer;
 import com.shopmanagement.model.Supplier;
 import com.shopmanagement.repository.CustomerRepository;
 import com.shopmanagement.repository.SupplierRepository;
+
+import jakarta.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class SupplierService {
 
-    @Autowired
-    private SupplierRepository supplierRepository;
+	@Autowired
+	private SupplierRepository supplierRepository;
 
-    @Autowired
-    private CustomerRepository customerRepository;
+	@Autowired
+	private CustomerRepository customerRepository;
 
-    @Autowired
-    private JwtUtils jwtUtil;
+	@Autowired
+	private JwtUtils jwtUtil;
 
-    /** ✅ Get all suppliers for the logged-in customer */
-    public List<Supplier> getAllSuppliers() {
-        Long customerId = jwtUtil.getRequiredCustomerId();
-        return supplierRepository.findByCustomer_Id(customerId);
-    }
+	/** ✅ Get all suppliers for the logged-in customer */
+	@Transactional
+	public List<SupplierDTO> getAllSuppliers() {
 
-    /** ✅ Save or update supplier (scoped to customer) */
-    public SupplierDTO  saveOrUpdate(SupplierDTO dto) {
-        Long customerId = jwtUtil.getRequiredCustomerId();
+	    Long customerId = jwtUtil.getRequiredCustomerId();
 
-        Supplier supplier;
+	    List<Supplier> suppliers = supplierRepository.findByCustomer_Id(customerId);
 
-        if (dto.getSupplierId() != null) {
-            // Update existing supplier, ensuring same customer
-            supplier = supplierRepository.findBySupplierIdAndCustomer_Id(dto.getSupplierId(), customerId)
-                    .orElseThrow(() -> new RuntimeException("Supplier not found or unauthorized"));
-        } else {
-            // Create new supplier
-            supplier = new Supplier();
-            Customer customer = customerRepository.findById(customerId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
-            supplier.setCustomer(customer);
-        }
+	    List<SupplierDTO> supplierList = new ArrayList<>();
 
-        supplier.setSupplierName(dto.getSupplierName());
-        supplier.setContactPerson(dto.getContactPerson());
-        supplier.setPhoneNumber(dto.getPhoneNumber());
-        supplier.setWhatsApp(dto.getWhatsApp());
-        supplier.setEmail(dto.getEmail());
-        supplier.setAddress(dto.getAddress());
-        supplier.setGstNumber(dto.getGstNumber());
-        supplier.setPaymentTerms(dto.getPaymentTerms());
-        supplier.setNotes(dto.getNotes());
+	    for (Supplier s : suppliers) {
 
-        Supplier savedSupplier = supplierRepository.save(supplier);
+	        SupplierDTO dto = new SupplierDTO(
+	                s.getSupplierId(),
+	                s.getSupplierName(),
+	                s.getContactPerson(),
+	                s.getPhoneNumber(),
+	                s.getWhatsApp(),
+	                s.getEmail(),
+	                s.getAddress(),
+	                s.getGstNumber(),
+	                s.getPaymentTerms(),
+	                s.getNotes(),
+	                s.getCustomer().getId() // safe due to @Transactional
+	        );
 
-        // ✅ Convert Entity → DTO
-        SupplierDTO response = new SupplierDTO();
-        response.setSupplierId(savedSupplier.getSupplierId());
-        response.setSupplierName(savedSupplier.getSupplierName());
-        response.setContactPerson(savedSupplier.getContactPerson());
-        response.setPhoneNumber(savedSupplier.getPhoneNumber());
-        response.setWhatsApp(savedSupplier.getWhatsApp());
-        response.setEmail(savedSupplier.getEmail());
-        response.setAddress(savedSupplier.getAddress());
-        response.setGstNumber(savedSupplier.getGstNumber());
-        response.setPaymentTerms(savedSupplier.getPaymentTerms());
-        response.setNotes(savedSupplier.getNotes());
+	        supplierList.add(dto);
+	    }
 
-        return response;
-    }
+	    return supplierList;
+	}
 
-    /** ✅ Delete supplier (scoped to customer) */
-    public void deleteSupplier(Long supplierId) {
-        Long customerId = jwtUtil.getRequiredCustomerId();
+	/** ✅ Save or update supplier (scoped to customer) */
+	public SupplierDTO saveOrUpdate(SupplierDTO dto) {
+		Long customerId = jwtUtil.getRequiredCustomerId();
 
-        Supplier supplier = supplierRepository.findBySupplierIdAndCustomer_Id(supplierId, customerId)
-                .orElseThrow(() -> new RuntimeException("Supplier not found or unauthorized"));
+		Supplier supplier;
 
-        supplierRepository.delete(supplier);
-    }
+		if (dto.getSupplierId() != null) {
+			// Update existing supplier, ensuring same customer
+			supplier = supplierRepository.findBySupplierIdAndCustomer_Id(dto.getSupplierId(), customerId)
+					.orElseThrow(() -> new RuntimeException("Supplier not found or unauthorized"));
+		} else {
+			// Create new supplier
+			supplier = new Supplier();
+			Customer customer = customerRepository.findById(customerId)
+					.orElseThrow(() -> new RuntimeException("Customer not found"));
+			supplier.setCustomer(customer);
+		}
+
+		supplier.setSupplierName(dto.getSupplierName());
+		supplier.setContactPerson(dto.getContactPerson());
+		supplier.setPhoneNumber(dto.getPhoneNumber());
+		supplier.setWhatsApp(dto.getWhatsApp());
+		supplier.setEmail(dto.getEmail());
+		supplier.setAddress(dto.getAddress());
+		supplier.setGstNumber(dto.getGstNumber());
+		supplier.setPaymentTerms(dto.getPaymentTerms());
+		supplier.setNotes(dto.getNotes());
+
+		Supplier savedSupplier = supplierRepository.save(supplier);
+
+		// ✅ Convert Entity → DTO
+		SupplierDTO response = new SupplierDTO();
+		response.setSupplierId(savedSupplier.getSupplierId());
+		response.setSupplierName(savedSupplier.getSupplierName());
+		response.setContactPerson(savedSupplier.getContactPerson());
+		response.setPhoneNumber(savedSupplier.getPhoneNumber());
+		response.setWhatsApp(savedSupplier.getWhatsApp());
+		response.setEmail(savedSupplier.getEmail());
+		response.setAddress(savedSupplier.getAddress());
+		response.setGstNumber(savedSupplier.getGstNumber());
+		response.setPaymentTerms(savedSupplier.getPaymentTerms());
+		response.setNotes(savedSupplier.getNotes());
+
+		return response;
+	}
+
+	/** ✅ Delete supplier (scoped to customer) */
+	public void deleteSupplier(Long supplierId) {
+		Long customerId = jwtUtil.getRequiredCustomerId();
+
+		Supplier supplier = supplierRepository.findBySupplierIdAndCustomer_Id(supplierId, customerId)
+				.orElseThrow(() -> new RuntimeException("Supplier not found or unauthorized"));
+
+		supplierRepository.delete(supplier);
+	}
 }

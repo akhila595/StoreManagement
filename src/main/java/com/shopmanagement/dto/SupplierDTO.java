@@ -16,8 +16,28 @@ public class SupplierDTO {
     private String paymentTerms;
     private String notes;
     private Long customerId; // ✅ Added
-
-    // Getters and Setters
+ 
+    public SupplierDTO(Long supplierId, String supplierName, String contactPerson, String phoneNumber, String whatsApp,
+			String email, String address, String gstNumber, String paymentTerms, String notes, Long customerId) {
+		super();
+		this.supplierId = supplierId;
+		this.supplierName = supplierName;
+		this.contactPerson = contactPerson;
+		this.phoneNumber = phoneNumber;
+		this.whatsApp = whatsApp;
+		this.email = email;
+		this.address = address;
+		this.gstNumber = gstNumber;
+		this.paymentTerms = paymentTerms;
+		this.notes = notes;
+		this.customerId = customerId;
+	}
+    
+    public SupplierDTO() {
+    	
+    }
+    
+	// Getters and Setters
     public Long getSupplierId() { return supplierId; }
     public void setSupplierId(Long supplierId) { this.supplierId = supplierId; }
 

@@ -20,6 +20,9 @@ public class Supplier {
     private String whatsApp;
     private String email;
    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
     
     @Column(columnDefinition = "TEXT")
     private String address;
@@ -38,10 +41,7 @@ public class Supplier {
 		this.customer = customer;
 	}
 
-	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
-    
+	
 	public Long getSupplierId() {
 		return supplierId;
 	}
