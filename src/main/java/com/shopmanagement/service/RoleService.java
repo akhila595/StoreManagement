@@ -35,7 +35,12 @@ public class RoleService {
     // ROLE CRUD (supports SuperAdmin + Customer Admin)
     // ==========================================================
     public List<RoleDTO> getAll() {
-        Long customerId = jwtUtils.getRequiredCustomerId();
+    	
+    	 boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+    	 Long customerId =null;
+    	 if(!isSuperAdmin) {
+         customerId = jwtUtils.getRequiredCustomerId();
+    	 }
 
         List<Role> roles;
         if (customerId == null) {
