@@ -57,11 +57,17 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
             throw new UsernameNotFoundException("User is inactive or deleted");
         }
+        boolean isSuperAdmin = user.getRoles().stream()
+                .anyMatch(r ->
+                        r.getName().equalsIgnoreCase("SUPERADMIN") ||
+                        r.getName().equalsIgnoreCase("SUPER_ADMIN"));
 
         // 2️⃣ Check customer status
+        if (!isSuperAdmin) {
         if (user.getCustomer() == null ||
                 !"ACTIVE".equalsIgnoreCase(user.getCustomer().getStatus())) {
             throw new UsernameNotFoundException("Customer is inactive");
+        }
         }
 
         // 3️⃣ Convert roles to authorities

@@ -74,8 +74,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             r.getName().equalsIgnoreCase("SUPERADMIN") ||
                             r.getName().equalsIgnoreCase("SUPER_ADMIN"));
 
+            
             Long resolvedCustomerId = tokenCustomerId;
+            if (isSuperAdmin && path.equals("/api/superadmin/customers")) {
 
+                request.setAttribute("userId", userId);
+                request.setAttribute("customerId", null);
+                request.setAttribute("isSuperAdmin", true);
+
+                UserDetails userDetails = userDetailsService.loadUserById(userId);
+
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request));
+
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                filterChain.doFilter(request, response);
+                return;
+            }
             // ✅ Superadmin: customerId must come from header
             if (isSuperAdmin) {
                 String headerCustomerId = request.getHeader("X-Customer-Id");
