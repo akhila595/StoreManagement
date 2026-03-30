@@ -25,7 +25,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository tokenRepository;
 
-    @Value("${app.frontend.url}")
+    @Value("${app.frontend.url:http://localhost:5173/}")
     private String frontendUrl;
 
     public PasswordResetService(JavaMailSender mailSender,
