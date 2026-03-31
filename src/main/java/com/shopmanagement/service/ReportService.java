@@ -208,14 +208,14 @@ public class ReportService {
 
 			PurchaseReportDTO dto = new PurchaseReportDTO();
 			dto.setSupplierName(p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown");
-
+			dto.setSupplierId(p.getSupplier() != null ? p.getSupplier().getSupplierId() : null);
 			dto.setProductName(product.getName());
 			dto.setSku(p.getProductVariant().getProductSku());
 			dto.setQuantity(p.getQuantity());
 			dto.setThresholdPrice(p.getThresholdPrice());
 			dto.setPurchaseDate(p.getPurchaseDate());
 			dto.setCustomerId(customerId);
-
+			
 			result.add(dto);
 		}
 
@@ -345,4 +345,54 @@ public class ReportService {
         report.setEndDate(endDate);
         return report;
     }
+	
+	public List<PurchaseReportDTO> getPurchaseReportBySupplier(
+	        Long supplierId,
+	        LocalDate startDate,
+	        LocalDate endDate) {
+
+	    Long customerId = jwtUtils.getRequiredCustomerId();
+
+	    List<Purchase> purchases =
+	            purchaseRepo.findBySupplier_SupplierIdAndPurchaseDateBetweenAndCustomer_IdAndStatus(
+	                    supplierId,
+	                    startDate,
+	                    endDate,
+	                    customerId,
+	                    "ACTIVE"
+	            );
+
+	    List<PurchaseReportDTO> result = new ArrayList<>();
+
+	    for (Purchase p : purchases) {
+
+	        if (p.getProductVariant() == null)
+	            continue;
+
+	        Product product = p.getProductVariant().getProduct();
+	        if (product == null || "DELETED".equals(product.getStatus()))
+	            continue;
+
+	        PurchaseReportDTO dto = new PurchaseReportDTO();
+
+	        dto.setSupplierName(
+	                p.getSupplier() != null ? p.getSupplier().getSupplierName() : "Unknown"
+	        );
+
+	        dto.setSupplierId(
+	                p.getSupplier() != null ? p.getSupplier().getSupplierId() : null
+	        );
+
+	        dto.setProductName(product.getName());
+	        dto.setSku(p.getProductVariant().getProductSku());
+	        dto.setQuantity(p.getQuantity());
+	        dto.setThresholdPrice(p.getThresholdPrice());
+	        dto.setPurchaseDate(p.getPurchaseDate());
+	        dto.setCustomerId(customerId);
+
+	        result.add(dto);
+	    }
+
+	    return result;
+	}
 }

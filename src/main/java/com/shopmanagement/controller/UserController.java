@@ -39,7 +39,7 @@ public class UserController {
     }
 
     @PostMapping
-    public UserDTO create(@RequestBody UserDTO dto) {
+    public ResponseEntity<?> create(@RequestBody UserDTO dto) {
         return userService.create(dto);
     }
 
@@ -47,7 +47,7 @@ public class UserController {
     // UPDATE USER (SEND IMAGE URL)
     // ===============================
     @PutMapping("/{id}")
-    public UserDTO update(@PathVariable(name = "id") Long id, @RequestBody UserDTO dto) {
+    public ResponseEntity<?> update(@PathVariable(name = "id") Long id, @RequestBody UserDTO dto) {
         return userService.update(id, dto);
     }
 

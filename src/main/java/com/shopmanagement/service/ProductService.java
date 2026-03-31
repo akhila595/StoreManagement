@@ -70,7 +70,7 @@ public class ProductService {
 
             String fileName = UUID.randomUUID() + ext;
 
-            Path productImageDir = Paths.get(uploadImageDir, "products");
+            Path productImageDir = Paths.get(uploadImageDir, "images", "products");
 
             if (!Files.exists(productImageDir)) {
                 Files.createDirectories(productImageDir);
@@ -364,7 +364,7 @@ public class ProductService {
 
             String fileName = tempFile.getFileName().toString();
 
-            Path productDir = Paths.get(uploadImageDir, "products");
+            Path productDir = Paths.get(uploadImageDir,"images", "products");
 
             if (!Files.exists(productDir)) {
                 Files.createDirectories(productDir);

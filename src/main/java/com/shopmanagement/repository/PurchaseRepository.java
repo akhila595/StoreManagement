@@ -28,4 +28,11 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
 	        Long customerId,
 	        String status
 	);
+	List<Purchase> findBySupplier_SupplierIdAndPurchaseDateBetweenAndCustomer_IdAndStatus(
+	        Long supplierId,
+	        LocalDate startDate,
+	        LocalDate endDate,
+	        Long customerId,
+	        String status
+	);
 }

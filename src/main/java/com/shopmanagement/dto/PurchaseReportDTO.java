@@ -12,6 +12,7 @@ public class PurchaseReportDTO {
     private LocalDate purchaseDate;
     private Long customerId; // ✅ Added for multi-customer link
     private String sku;
+    private Long supplierId;
 
     // Getters & Setters
     public String getSupplierName() { return supplierName; }
@@ -36,5 +37,11 @@ public class PurchaseReportDTO {
 	}
 	public void setSku(String sku) {
 		this.sku = sku;
+	}
+	public Long getSupplierId() {
+		return supplierId;
+	}
+	public void setSupplierId(Long supplierId) {
+		this.supplierId = supplierId;
 	}
 }

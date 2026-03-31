@@ -118,4 +118,22 @@ public class ReportsController {
 		return ResponseEntity.ok( reportService.getWeeklyReport(startDate, endDate));
 	}
 
+	
+	@GetMapping("/purchases-by-supplier")
+	public ResponseEntity<List<PurchaseReportDTO>> getPurchaseReportBySupplier(
+
+	        @RequestParam("supplierId") Long supplierId,
+
+	        @RequestParam("startDate")
+	        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+	        LocalDate startDate,
+
+	        @RequestParam("endDate")
+	        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+	        LocalDate endDate) {
+
+	    return ResponseEntity.ok(
+	            reportService.getPurchaseReportBySupplier(supplierId, startDate, endDate)
+	    );
+	}
 }
