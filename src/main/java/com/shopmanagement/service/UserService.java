@@ -23,298 +23,242 @@ import com.shopmanagement.repository.UserRepository;
 @Service
 public class UserService {
 
-	private final UserRepository userRepo;
-	private final RoleRepository roleRepo;
-	private final PasswordEncoder passwordEncoder;
-	private final CustomerRepository customerRepo;
-	private final JwtUtils jwtUtils;
-
-	public UserService(UserRepository userRepo, RoleRepository roleRepo, PasswordEncoder passwordEncoder,
-			CustomerRepository customerRepo, JwtUtils jwtUtils) {
-		this.userRepo = userRepo;
-		this.roleRepo = roleRepo;
-		this.passwordEncoder = passwordEncoder;
-		this.customerRepo = customerRepo;
-		this.jwtUtils = jwtUtils;
-	}
+    private final UserRepository userRepo;
+    private final RoleRepository roleRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final CustomerRepository customerRepo;
+    private final JwtUtils jwtUtils;
+
+    public UserService(UserRepository userRepo,
+                       RoleRepository roleRepo,
+                       PasswordEncoder passwordEncoder,
+                       CustomerRepository customerRepo,
+                       JwtUtils jwtUtils) {
+        this.userRepo = userRepo;
+        this.roleRepo = roleRepo;
+        this.passwordEncoder = passwordEncoder;
+        this.customerRepo = customerRepo;
+        this.jwtUtils = jwtUtils;
+    }
+
+    // ==========================================================
+    // GET ALL USERS
+    // ==========================================================
+    public List<UserDTO> getAll() {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        List<User> users =
+                userRepo.findByCustomer_IdAndStatus(customerId, "ACTIVE");
+
+        return users.stream().map(this::toDTO).toList();
+    }
+
+    // ==========================================================
+    // GET USER BY ID
+    // ==========================================================
+    public UserDTO getById(Long id) {
+
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        User user = userRepo
+                .findByIdAndCustomer_Id(id, customerId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found or unauthorized"));
+
+        return toDTO(user);
+    }
+
+    // ==========================================================
+    // CREATE USER
+    // ==========================================================
+    @Transactional
+    public ResponseEntity<?> create(UserDTO dto) {
 
-	// ==========================================================
-	// GET ALL USERS
-	// ==========================================================
-	public List<UserDTO> getAll() {
+        Long customerId = jwtUtils.getRequiredCustomerId();
+
+        // Check email exists
+        if (userRepo.findByEmail(dto.getEmail()).isPresent()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Email already exists");
+        }
 
-		boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
-		Long customerId = jwtUtils.getCustomerId();
+        Optional<Customer> customer = customerRepo.findById(customerId);
+
+        if (customer.isEmpty()) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body("Customer not found");
+        }
 
-		List<User> users;
+        User user = new User();
+        user.setEmail(dto.getEmail());
+        user.setName(dto.getName());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setStatus("ACTIVE");
+        user.setCustomer(customer.get());
 
-		if (isSuperAdmin) {
-			users = userRepo.findByStatus("ACTIVE");
-		} else {
-			if (customerId == null)
-				throw new RuntimeException("Unauthorized");
+        // Assign roles
+        if (dto.getRoleNames() != null && !dto.getRoleNames().isEmpty()) {
 
-			users = userRepo.findByCustomer_IdAndStatus(customerId, "ACTIVE");
-		}
+            Set<Role> roles = new HashSet<>();
 
-		return users.stream().map(this::toDTO).toList();
-	}
+            for (String name : dto.getRoleNames()) {
 
-	// ==========================================================
-	// GET USER BY ID
-	// ==========================================================
-	public UserDTO getById(Long id) {
+                Optional<Role> role =
+                        roleRepo.findByNameAndCustomer_IdAndStatus(
+                                name, customerId, "ACTIVE");
 
-		boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
-		Long customerId = jwtUtils.getCustomerId();
+                if (role.isEmpty()) {
+                    return ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body("Role not found: " + name);
+                }
 
-		User user;
+                roles.add(role.get());
+            }
 
-		if (isSuperAdmin) {
-			user = userRepo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
-		} else {
-			if (customerId == null)
-				throw new RuntimeException("Unauthorized");
+            user.setRoles(roles);
+        }
 
-			user = userRepo.findByIdAndCustomer_Id(id, customerId)
-					.orElseThrow(() -> new RuntimeException("User not found or unauthorized"));
-		}
+        userRepo.save(user);
 
-		return toDTO(user);
-	}
+        return ResponseEntity.ok(toDTO(user));
+    }
 
-	// ==========================================================
-	// CREATE USER
-	// ==========================================================
-	@Transactional
-	public ResponseEntity<?> create(UserDTO dto) {
+    // ==========================================================
+    // UPDATE USER
+    // ==========================================================
+    @Transactional
+    public ResponseEntity<?> update(Long id, UserDTO dto) {
 
-		boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
-		Long customerId = jwtUtils.getCustomerId();
+        Long customerId = jwtUtils.getRequiredCustomerId();
 
-		// Check email exists
-		if (userRepo.findByEmail(dto.getEmail()).isPresent()) {
-			return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
-		}
+        User user = userRepo
+                .findByIdAndCustomer_Id(id, customerId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found or unauthorized"));
 
-		User user = new User();
-		user.setEmail(dto.getEmail());
-		user.setName(dto.getName());
-		user.setPassword(passwordEncoder.encode(dto.getPassword()));
-		user.setStatus("ACTIVE");
+        // Name update
+        if (dto.getName() != null && !dto.getName().isBlank()) {
+            user.setName(dto.getName());
+        }
 
-		// Assign roles safely
-		if (dto.getRoleNames() != null && !dto.getRoleNames().isEmpty()) {
+        // Email update
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
 
-			Set<Role> roles = new HashSet<>();
+            Optional<User> existingUser = userRepo.findByEmail(dto.getEmail());
 
-			for (String name : dto.getRoleNames()) {
+            if (existingUser.isPresent()
+                    && !existingUser.get().getId().equals(id)) {
 
-				Optional<Role> role;
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body("Email already exists");
+            }
 
-				if (isSuperAdmin) {
-					role = roleRepo.findByName(name);
-				} else {
-					role = roleRepo.findByNameAndCustomer_IdAndStatus(name, customerId, "ACTIVE");
-				}
+            user.setEmail(dto.getEmail());
+        }
 
-				if (role.isEmpty()) {
-					return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Role not found: " + name);
-				}
+        // Password update
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
 
-				roles.add(role.get());
-			}
+        // Roles update
+        if (dto.getRoleNames() != null) {
 
-			user.setRoles(roles);
-		}
+            Set<Role> roles = new HashSet<>();
 
-		// Assign customer
-		if (!isSuperAdmin) {
+            for (String name : dto.getRoleNames()) {
 
-			if (customerId == null) {
-				return ResponseEntity.badRequest().body("Customer context missing");
-			}
+                Optional<Role> role =
+                        roleRepo.findByNameAndCustomer_IdAndStatus(
+                                name, customerId, "ACTIVE");
 
-			Optional<Customer> customer = customerRepo.findById(customerId);
+                if (role.isEmpty()) {
+                    return ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body("Role not found: " + name);
+                }
 
-			if (customer.isEmpty()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Customer not found");
-			}
+                roles.add(role.get());
+            }
 
-			user.setCustomer(customer.get());
-		}
+            user.setRoles(roles);
+        }
 
-		userRepo.save(user);
+        // Profile image
+        if (dto.getProfileImage() != null) {
+            user.setProfileImage(dto.getProfileImage());
+        }
 
-		return ResponseEntity.ok(toDTO(user));
-	}
+        userRepo.save(user);
 
-	// ==========================================================
-	// UPDATE USER
-	// ==========================================================
-	@Transactional
-	public ResponseEntity<?> update(Long id, UserDTO dto) {
+        return ResponseEntity.ok(toDTO(user));
+    }
 
-		boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
-		Long customerId = jwtUtils.getCustomerId();
+    // ==========================================================
+    // SOFT DELETE USER
+    // ==========================================================
+    @Transactional
+    public ResponseEntity<?> delete(Long id) {
 
-		User user;
+        Long customerId = jwtUtils.getRequiredCustomerId();
 
-		// Find user
-		if (isSuperAdmin) {
-			Optional<User> optionalUser = userRepo.findById(id);
-			if (optionalUser.isEmpty()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-			}
-			user = optionalUser.get();
-		} else {
+        User user = userRepo
+                .findByIdAndCustomer_Id(id, customerId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found or unauthorized"));
 
-			if (customerId == null) {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-			}
+        user.setStatus("DELETED");
 
-			Optional<User> optionalUser = userRepo.findByIdAndCustomer_Id(id, customerId);
+        userRepo.save(user);
 
-			if (optionalUser.isEmpty()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found or unauthorized");
-			}
+        return ResponseEntity.ok("User deleted successfully");
+    }
 
-			user = optionalUser.get();
-		}
+    public List<UserDTO> getUsersWithRolesForCurrentCustomer() {
 
-		// Name update
-		if (dto.getName() != null && !dto.getName().isBlank()) {
-			user.setName(dto.getName());
-		}
+        boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
+        Long customerId = jwtUtils.getCustomerId();
 
-		// Email uniqueness check
-		if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+        List<User> users;
 
-			Optional<User> existingUser = userRepo.findByEmail(dto.getEmail());
+        if (isSuperAdmin) {
+            users = userRepo.findByStatus("ACTIVE");
+        } else {
+            if (customerId == null)
+                throw new RuntimeException("Unauthorized");
 
-			if (existingUser.isPresent() && !existingUser.get().getId().equals(id)) {
-				return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
-			}
+            users = userRepo.findByCustomer_IdAndStatus(customerId, "ACTIVE");
+        }
 
-			user.setEmail(dto.getEmail());
-		}
+        return users.stream().map(this::toDTO).toList();
+    }
+    // ==========================================================
+    // DTO MAPPING
+    // ==========================================================
+    private UserDTO toDTO(User u) {
 
-		// Password update
-		if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
-			user.setPassword(passwordEncoder.encode(dto.getPassword()));
-		}
+        UserDTO dto = new UserDTO();
 
-		// Roles update
-		if (dto.getRoleNames() != null) {
+        dto.setId(u.getId());
+        dto.setEmail(u.getEmail());
+        dto.setName(u.getName());
+        dto.setProfileImage(u.getProfileImage());
 
-			Set<Role> roles = new HashSet<>();
+        dto.setRoleNames(
+                u.getRoles()
+                        .stream()
+                        .map(Role::getName)
+                        .collect(Collectors.toSet())
+        );
 
-			for (String name : dto.getRoleNames()) {
+        if (u.getCustomer() != null)
+            dto.setCustomerId(u.getCustomer().getId());
 
-				Optional<Role> role;
-
-				if (isSuperAdmin) {
-					role = roleRepo.findByName(name);
-				} else {
-					role = roleRepo.findByNameAndCustomer_IdAndStatus(name, customerId, "ACTIVE");
-				}
-
-				if (role.isEmpty()) {
-					return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Role not found: " + name);
-				}
-
-				roles.add(role.get());
-			}
-
-			user.setRoles(roles);
-		}
-
-		// Profile image
-		if (dto.getProfileImage() != null) {
-			user.setProfileImage(dto.getProfileImage());
-		}
-
-		userRepo.save(user);
-
-		return ResponseEntity.ok(toDTO(user));
-	}
-
-	// ==========================================================
-	// SOFT DELETE USER
-	// ==========================================================
-	@Transactional
-	public ResponseEntity<?> delete(Long id) {
-
-		boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
-		Long customerId = jwtUtils.getCustomerId();
-
-		User user;
-
-		if (isSuperAdmin) {
-
-			Optional<User> optionalUser = userRepo.findById(id);
-
-			if (optionalUser.isEmpty()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-			}
-
-			user = optionalUser.get();
-
-		} else {
-
-			Optional<User> optionalUser = userRepo.findByIdAndCustomer_Id(id, customerId);
-
-			if (optionalUser.isEmpty()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found or unauthorized");
-			}
-
-			user = optionalUser.get();
-		}
-
-		user.setStatus("DELETED");
-		userRepo.save(user);
-
-		return ResponseEntity.ok("User deleted successfully");
-	}
-
-	// ==========================================================
-	// MAPPING TO DTO
-	// ==========================================================
-	private UserDTO toDTO(User u) {
-
-		UserDTO dto = new UserDTO();
-		dto.setId(u.getId());
-		dto.setEmail(u.getEmail());
-		dto.setName(u.getName());
-		dto.setProfileImage(u.getProfileImage());
-
-		dto.setRoleNames(u.getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
-
-		if (u.getCustomer() != null)
-			dto.setCustomerId(u.getCustomer().getId());
-
-		return dto;
-	}
-
-	// ==========================================================
-	// GET USERS FOR CURRENT CUSTOMER
-	// ==========================================================
-	public List<UserDTO> getUsersWithRolesForCurrentCustomer() {
-
-		boolean isSuperAdmin = jwtUtils.isCurrentUserSuperAdmin();
-		Long customerId = jwtUtils.getCustomerId();
-
-		List<User> users;
-
-		if (isSuperAdmin) {
-			users = userRepo.findByStatus("ACTIVE");
-		} else {
-			if (customerId == null)
-				throw new RuntimeException("Unauthorized");
-
-			users = userRepo.findByCustomer_IdAndStatus(customerId, "ACTIVE");
-		}
-
-		return users.stream().map(this::toDTO).toList();
-	}
+        return dto;
+    }
 }

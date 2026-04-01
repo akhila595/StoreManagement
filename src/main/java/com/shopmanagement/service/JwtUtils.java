@@ -3,6 +3,10 @@ package com.shopmanagement.service;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class JwtUtils {
@@ -35,6 +39,20 @@ public class JwtUtils {
     // ==========================================================
     public Long getCustomerId() {
 
+        // 🔹 1️⃣ First check request attribute (set by JWT filter)
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            Object customerId = request.getAttribute("customerId");
+
+            if (customerId instanceof Long) {
+                return (Long) customerId;
+            }
+        }
+
+        // 🔹 2️⃣ Fallback to authentication principal
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
@@ -52,7 +70,6 @@ public class JwtUtils {
 
         return null;
     }
-
     // ==========================================================
     // 🔐 Required Customer ID
     // ==========================================================
